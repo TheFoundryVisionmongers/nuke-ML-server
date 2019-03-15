@@ -6,10 +6,10 @@ The following models are provided as examples:
 - [Mask-RCNN] (https://github.com/facebookresearch/Detectron)
 - [DensePose] (https://github.com/facebookresearch/DensePose)
 
-<div align="center">
+<!-- <div align="center">
   <img src="~/Pictures/DLClient_0.png" width="700px" />
   <p>Example of Nuke doing DensePose inference.</p>
-</div>
+</div> -->
 
 ## Introduction
 
@@ -41,6 +41,6 @@ This plug-in was initially created by Sebastian Lutz (XXX mail?)
 - [Mask R-CNN](https://arxiv.org/abs/1703.06870).
   Kaiming He, Georgia Gkioxari, Piotr Dollár, and Ross Girshick.
   IEEE International Conference on Computer Vision (ICCV), 2017.
-- [DensePose: Dense Hunab Pose Estimation In The Wild](https://arxiv.org/abs/1802.00434)
-  Riza Alp Guler, Natalia Neverova, Iasonas Kokkinos
+- [DensePose: Dense Human Pose Estimation In The Wild](https://arxiv.org/abs/1802.00434)
+  Riza Alp Güler, Natalia Neverova, Iasonas Kokkinos
   IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2018
