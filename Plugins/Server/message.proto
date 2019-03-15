@@ -1,0 +1,93 @@
+syntax = "proto2";
+
+package dlserver;
+
+message RequestWrapper {
+	required bool info = 1;
+	oneof request {
+		RequestInfo r1 = 2;
+		RequestInference r2 = 3;
+	}
+}
+
+message RespondWrapper {
+	required bool info = 1;
+	oneof response {
+		RespondInfo r1 = 2;
+		RespondInference r2 = 3;
+	}
+}
+
+message RequestInfo {
+	required bool info = 1;
+}
+
+message RespondInfo {
+	required int32 numModels = 1;
+	repeated Model models = 2;
+}
+
+message Model {
+	required string name = 1;
+	required string label = 2;
+	repeated ImagePrototype inputs = 3;
+	repeated ImagePrototype outputs = 4;
+	repeated BoolOption boolOptions = 5;
+	repeated IntOption intOptions = 6;
+	repeated FloatOption floatOptions = 7;
+	repeated StringOption stringOptions = 8;
+	repeated MultipleChoiceOption mcOptions = 9;
+}
+
+message BoolOption {
+	required string name = 1;
+	required bool value = 2;
+}
+
+message IntOption {
+	required string name = 1;
+	required int32 value = 2;
+}
+
+message FloatOption {
+	required string name = 1;
+	required float value = 2;
+}
+
+message StringOption {
+	required string name = 1;
+	required string value = 2;
+}
+
+message MultipleChoiceOption {
+	required string name = 1;
+	required string value = 2;
+	repeated string choices = 3;
+}
+
+message ImagePrototype {
+	required string name = 1;
+	required int32 channels = 2;
+}
+
+message Error {
+	required string msg = 1;
+}
+
+message RequestInference {
+	required Model model = 1;
+	repeated Image image = 2;
+}
+
+message RespondInference {
+	required int32 numImages = 1;
+	repeated Image image = 2;
+}
+
+message Image {
+	required int32 width = 1;
+	required int32 height = 2;
+	required int32 channels = 3;
+	required bytes image = 4;
+}
+

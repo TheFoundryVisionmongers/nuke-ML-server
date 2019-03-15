@@ -1,0 +1,19 @@
+#Like .gitignore but for the Dockerfile build
+#Put files you don't want to copy to your docker image there
+
+.dockerignore
+Dockerfile
+
+#all the Nuke DLClient Node files
+compile
+DLClient*
+
+# the other unused model
+*.pb
+
+message.proto
+# different models we don't use for faster docker build
+models/fastImageProcessing/
+models/fastImageProcessingParameterized/
+models/pwcNet/
+models/styleTransfer
