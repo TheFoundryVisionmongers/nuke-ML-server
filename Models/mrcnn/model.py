@@ -67,7 +67,7 @@ class Model(BaseModel):
 		workspace.SwitchWorkspace('mrcnn_workspace', True)
 
 		# Initialise the DLL model out of the configuration and weigts files
-		if not hasattr(self, 'model'):		
+		if not hasattr(self, 'model'):
 			# Reset to default config
 			merge_cfg_from_cfg(self.default_cfg)
             # Load mask rcnn configuration file
@@ -82,11 +82,11 @@ class Model(BaseModel):
 			if not dictEqual(self.mrcnn_cfg, cfg):
 				# Load mask rcnn configuration file
 				merge_cfg_from_cfg(self.mrcnn_cfg)
-
+            
 		with c2_utils.NamedCudaScope(0):
-		            cls_boxes, cls_segms, cls_keyps, _ = infer_engine.im_detect_all(
-		                self.model, image[:, :, ::-1], None
-						)
+			cls_boxes, cls_segms, cls_keyps, _ = infer_engine.im_detect_all(
+                self.model, image[:, :, ::-1], None
+                )
 
 		if self.binary_masks:
 			res = vis_utils.vis_one_image_binary(

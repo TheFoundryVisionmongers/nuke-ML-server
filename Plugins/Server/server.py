@@ -135,8 +135,6 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             img = np.reshape(img, (channels, height, width))
             img = np.transpose(img, (1, 2, 0))
             img = np.flipud(img)
-            # img = np.clip(img, 0, 1)
-            # img *= 255
             img_list.append(img)
 
         # Running inference
@@ -149,7 +147,6 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
         resp_inf = RespondInference()
         resp_inf.numImages = len(res)
         for img in res:
-            # img = img.astype(np.float32) / 255.
             img = np.flipud(img)
             image = resp_inf.image.add()
             image.width = np.shape(img)[0]

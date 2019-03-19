@@ -53,5 +53,5 @@ RUN bash /workspace/densepose/DensePoseData/get_densepose_uv.sh
 RUN mv UV_data /workspace/densepose/DensePoseData/
 
 WORKDIR /workspace/dl-server
+# Copy your current folder to the docker image /workspace/dl-server/ folder
 COPY . .
-# when github replace last COPY by a: RUN git clone https://github.com/foundry/dl-plugin/dl-server?
