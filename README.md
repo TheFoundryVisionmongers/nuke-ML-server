@@ -19,13 +19,12 @@ The plug-in works as follows:
 - The Python server responds with the list of available Deep Learning (DL) models and options
 - The Nuke node displays the models in an enumeration node, from which the user can choose
 - On every engine call, the current image and model options are sent from the Nuke node to the server
-- The server does an inference on the image using the chosen model/options
-This inference can be an actual inference operation of a deep learning model, or just other image processing code
+- The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a deep learning model, or just other image processing code
 - The resulting image is sent back to the Nuke node
 
 ## Installation
 
-Please find installation instruction in [INSTALL.md](INSTALL.md)
+Please find installation instruction in [INSTALL.md](INSTALL.md).
 
 ## License
 
@@ -34,7 +33,7 @@ The source code is licensed under the license found in the [LICENSE](LICENSE) fi
 ## Contact
 
 - Johanna Barbier (Johanna.Barbier@foundry.com)
-This plug-in was initially created by Sebastian Lutz (XXX mail?)
+- This plug-in was initially created by Sebastian Lutz (XXX mail?)
 
 ## References
 
