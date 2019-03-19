@@ -1,6 +1,6 @@
 # Deep Learning Plug-in for Nuke
 
-This repository contains the Client-Server system enabling Deep Learning (DL) inference in Nuke.
+This repository contains the client-server system enabling Deep Learning (DL) inference in Nuke.
 The following models are provided as examples:
 - blur: a simple gaussian blur operation
 - [Mask-RCNN] (https://github.com/facebookresearch/Detectron)
@@ -19,12 +19,12 @@ The plug-in works as follows:
 - The Python server responds with the list of available Deep Learning (DL) models and options
 - The Nuke node displays the models in an enumeration node, from which the user can choose
 - On every engine call, the current image and model options are sent from the Nuke node to the server
-- The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a deep learning model, or just other image processing code
+- The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a deep learning model, or just some other image processing code
 - The resulting image is sent back to the Nuke node
 
 ## Installation
 
-Please find installation instruction in [INSTALL.md](INSTALL.md).
+Please find installation instructions in [INSTALL.md](INSTALL.md).
 
 ## License
 

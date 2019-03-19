@@ -3,11 +3,11 @@
 The Nuke Deep Learning (DL) installation can be divided into compiling the DLClient Nuke node and installing the DLServer using Docker.
 
 **Requirements:**
-- NVIDIA GPU, Linux with Nuke installed (XXX Nuke11.3v1 required or other version fine as well?)
+- NVIDIA GPU, Linux with Nuke installed
 - Protobuf
 - Docker
 
-## Installing the Client
+## Installing the client
 
 ### Install Protobuf
 
@@ -40,20 +40,21 @@ Clone the nuke-dl-server repository:
 # NUKEDLSERVER=/path/to/clone/nuke-DL-server
 git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server $NUKEDLSERVER
 ```
-Compile the Nuke node and make the DLClient.so plug-in library:
+In the [Plugins/Client/CMakeLists.txt](Plugins/Client/CMakeLists.txt), change the target_include_directories to the include folder of your Nuke version. Then compile the Nuke node and make the DLClient.so plug-in library:
 ```
 mkdir build && cd build
 cmake ..
 make
+sudo make install
 ```
 Update NUKE_PATH to point to the shared DLClient.so library:
 ```
-export NUKE_PATH=/path/to/lib/:$NUKE_PATH
+export NUKE_PATH=/path/to/build/lib/:$NUKE_PATH
 ```
 At that point, after opening Nuke and doing an "Update [All plugins]", the "DLClient" node should be available.
 If not verify that the NUKE_PATH is correctly set in this instance of Nuke (or simply export the NUKE_PATH in the ~/.bashrc)
 
-## Installing the Server
+## Installing the server
 
 ### Docker
 
@@ -70,9 +71,8 @@ Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
 # Start by loading Ubuntu16.04 with cuda 9.0 and cudnn7 as the base image
 sudo docker pull nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
-# Next line necessary for now to correctly copy the Server directory to the docker dl-server directory (XXX change Dockerfile to directly clone from github)
-cd Plugins/Server/
 # Build the docker image on top of the base image
+cd Plugins/Server/
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 Create a docker container on top of the created docker image:
@@ -93,7 +93,7 @@ To be able to run inference on both Densepose and Mask-RCNN deep learning models
   - Configuration: [DensePose_ResNet101_FPN_s1x-e2e.yaml](https://github.com/facebookresearch/DensePose/blob/master/configs/DensePose_ResNet101_FPN_s1x-e2e.yaml)
   - Corresponding weights: [DensePose_ResNet101_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
 
-And respectively move them to Models/mrcnn and Models/densePose.
+And respectively move them to Models/mrcnn/ and Models/densePose/ folders.
 
 Finally to connect the Python server with the Nuke client:
 1. In the running docker container, query the ip address:
