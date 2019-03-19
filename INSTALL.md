@@ -95,6 +95,8 @@ To be able to run inference on both Densepose and Mask-RCNN deep learning models
 
 And respectively move them to Models/mrcnn/ and Models/densePose/ folders.
 
+### Connect client and server
+
 Finally to connect the Python server with the Nuke client:
 1. In the running docker container, query the ip address:
 ```
@@ -106,3 +108,10 @@ hostname -I
 python server.py 55555
 ```
 4. In Nuke, click on the DLClient connect button, you should have the three models available.
+
+<!-- ### Implement your own model
+
+All available models on the server live in their own folder within the /Models folder. At the very minimum, each of these model folders need to include an empty __init__.py file and a model.py file that contains a Model class inheriting from BaseModel.
+
+To create your own model, create a new folder in the /Models directory.
+To go further and use your own trained deep learning model in Nuke -->
