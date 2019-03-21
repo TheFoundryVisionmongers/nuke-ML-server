@@ -18,5 +18,3 @@ target_include_directories(DLClient PRIVATE
 target_link_libraries(DLClient
     ${PROTOBUF_LIBRARY}
 )
-
-install(TARGETS DLClient DESTINATION ${CMAKE_BINARY_DIR}/lib)
