@@ -1,6 +1,6 @@
-# Deep Learning Plug-in for Nuke
+# Python-based Deep Learning Frame Server for Nuke
 
-This repository contains the client-server system enabling Deep Learning (DL) inference in Nuke.
+This repository contains the client-server system enabling Deep Learning (DL) inference in Nuke. This work is split into two parts: a client Nuke plug-in [Plugins/Client/](Plugins/Client) and the Python frame server [Plugings/Server](Plugins/Server).
 The following models are provided as examples:
 - blur: a simple gaussian blur operation
 - [Mask-RCNN] (https://github.com/facebookresearch/Detectron)
@@ -15,12 +15,12 @@ The following models are provided as examples:
 
 The Deep Learning (DL) plug-in connects Nuke to a Python server to apply DL models to images.
 The plug-in works as follows:
-- The Nuke node can connect to a server given an ip address and port
-- The Python server responds with the list of available Deep Learning (DL) models and options
-- The Nuke node displays the models in an enumeration node, from which the user can choose
-- On every engine call, the current image and model options are sent from the Nuke node to the server
-- The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a deep learning model, or just some other image processing code
-- The resulting image is sent back to the Nuke node
+- The Nuke node can connect to a server given an ip address and port,
+- The Python server responds with the list of available Deep Learning (DL) models and options,
+- The Nuke node displays the models in an enumeration node, from which the user can choose,
+- On every engine call, the current image and model options are sent from the Nuke node to the server,
+- The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a deep learning model, or just some other image processing code,
+- The resulting image is sent back to the Nuke node.
 
 ## Installation
 
@@ -33,13 +33,14 @@ The source code is licensed under the license found in the [LICENSE](LICENSE) fi
 ## Contact
 
 - Johanna Barbier (Johanna.Barbier@foundry.com)
-- This plug-in was initially created by Sebastian Lutz (XXX mail?)
+
+This plug-in was initially created by Sebastian Lutz (https://v-sense.scss.tcd.ie/?profile=sebastian-lutz).
 
 ## References
 
 - [Mask R-CNN](https://arxiv.org/abs/1703.06870).
   Kaiming He, Georgia Gkioxari, Piotr Dollár, and Ross Girshick.
   IEEE International Conference on Computer Vision (ICCV), 2017.
-- [DensePose: Dense Human Pose Estimation In The Wild](https://arxiv.org/abs/1802.00434)
-  Riza Alp Güler, Natalia Neverova, Iasonas Kokkinos
-  IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2018
+- [DensePose: Dense Human Pose Estimation In The Wild](https://arxiv.org/abs/1802.00434).
+  Riza Alp Güler, Natalia Neverova, Iasonas Kokkinos.
+  IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2018.

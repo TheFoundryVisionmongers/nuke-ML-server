@@ -4,6 +4,7 @@ The Nuke Deep Learning (DL) installation can be divided into compiling the DLCli
 
 **Requirements:**
 - NVIDIA GPU, Linux with Nuke installed
+- CMake (minimum 3.10)
 - Protobuf
 - Docker
 
@@ -11,7 +12,7 @@ The Nuke Deep Learning (DL) installation can be divided into compiling the DLCli
 
 ### Install Protobuf
 
-Following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the protobuf github repository.
+Protobuf may be installed with package manager but we recommend compiling it from source following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the protobuf github repository.
 
 Get Protobuf 3.5.1 source file for C++:
 ```
@@ -87,7 +88,7 @@ Note: the `-v` (volume) options links your Models/ folder with the models/ folde
 
 To be able to run inference on both Densepose and Mask-RCNN deep learning models, you need to download the configuration and weight files:
 - For Mask-RCNN:
-  - Configuration: [e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml](https://github.com/facebookresearch/Detectron/blob/master/configs/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml),
+  - Configuration: [e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml](https://github.com/facebookresearch/Detectron/blob/master/configs/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml)
   - Correponding weights: [model_final.pkl](https://dl.fbaipublicfiles.com/detectron/35859745/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml.02_00_30.ESWbND2w/output/train/coco_2014_train%3Acoco_2014_valminusminival/generalized_rcnn/model_final.pkl) (from the Detectron [Model Zoo](https://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md))
 - For DensePose:
   - Configuration: [DensePose_ResNet101_FPN_s1x-e2e.yaml](https://github.com/facebookresearch/DensePose/blob/master/configs/DensePose_ResNet101_FPN_s1x-e2e.yaml)
@@ -109,7 +110,7 @@ python server.py 55555
 ```
 4. In Nuke, click on the DLClient connect button, you should have the three models available.
 
-<!-- ### Implement your own model
+<!-- ### Implement your own model (XXX To finish, here or in another section?)
 
 All available models on the server live in their own folder within the /Models folder. At the very minimum, each of these model folders need to include an empty __init__.py file and a model.py file that contains a Model class inheriting from BaseModel.
 
