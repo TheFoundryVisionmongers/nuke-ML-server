@@ -41,10 +41,10 @@ Clone the nuke-dl-server repository:
 # NUKEDLSERVER=/path/to/clone/nuke-DL-server
 git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server $NUKEDLSERVER
 ```
-In the [Plugins/Client/CMakeLists.txt](Plugins/Client/CMakeLists.txt), change the target_include_directories to the include folder of your Nuke version. Then compile the Nuke node and make the DLClient.so plug-in library:
+Run the commands below to compile the client DLClient.so plug-in, setting the NUKE_INSTALL_PATH to point to the folder of your Nuke version:
 ```
 mkdir build && cd build
-cmake ..
+cmake -DNUKE_INSTALL_PATH="/path/to/Nuke11.3v1" ..
 make
 sudo make install
 ```
