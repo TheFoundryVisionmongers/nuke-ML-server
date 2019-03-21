@@ -41,13 +41,13 @@ Clone the nuke-dl-server repository:
 # NUKEDLSERVER=/path/to/clone/nuke-DL-server
 git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server $NUKEDLSERVER
 ```
-Run the commands below to compile the client DLClient.so plug-in, setting the NUKE_INSTALL_PATH to point to the folder of your Nuke version:
+Execute the commands below to compile the client DLClient.so plug-in, setting the NUKE_INSTALL_PATH to point to the folder of the desired Nuke version:
 ```
 mkdir build && cd build
 cmake -DNUKE_INSTALL_PATH="/path/to/Nuke11.3v1" ..
 make
 ```
-Update NUKE_PATH to point to the shared DLClient.so library:
+Your DLClient.so plug-in will now be in the 'build' folder, it can be left there, moved to your ~/.nuke folder, or to another folder entirely. Before it can be used, Nuke needs to know where it lives. You'll need to update NUKE_PATH to point to the DLClient.so plug-in (This can be skipped if it was moved to the root of your ~/.nuke folder, or the path was added in Nuke through Python):
 ```
 export NUKE_PATH=/path/to/lib/:$NUKE_PATH
 ```
