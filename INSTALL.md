@@ -46,11 +46,10 @@ Run the commands below to compile the client DLClient.so plug-in, setting the NU
 mkdir build && cd build
 cmake -DNUKE_INSTALL_PATH="/path/to/Nuke11.3v1" ..
 make
-sudo make install
 ```
 Update NUKE_PATH to point to the shared DLClient.so library:
 ```
-export NUKE_PATH=/path/to/build/lib/:$NUKE_PATH
+export NUKE_PATH=/path/to/lib/:$NUKE_PATH
 ```
 At that point, after opening Nuke and doing an "Update [All plugins]", the "DLClient" node should be available.
 If not verify that the NUKE_PATH is correctly set in this instance of Nuke (or simply export the NUKE_PATH in the ~/.bashrc)

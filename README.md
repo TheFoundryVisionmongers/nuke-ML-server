@@ -1,10 +1,11 @@
 # Python-based Deep Learning Frame Server for Nuke
 
 This repository contains the client-server system enabling Deep Learning (DL) inference in Nuke. This work is split into two parts: a client Nuke plug-in [Plugins/Client/](Plugins/Client) and the Python frame server [Plugings/Server](Plugins/Server).
+
 The following models are provided as examples:
 - blur: a simple gaussian blur operation
-- [Mask-RCNN] (https://github.com/facebookresearch/Detectron)
-- [DensePose] (https://github.com/facebookresearch/DensePose)
+- [Mask-RCNN](https://github.com/facebookresearch/Detectron)
+- [DensePose](https://github.com/facebookresearch/DensePose)
 
 <div align="center">
   <img src="https://user-images.githubusercontent.com/27013153/54621337-837f0900-4a5f-11e9-9169-0e8ad1fbe67a.png" width="700px" />
