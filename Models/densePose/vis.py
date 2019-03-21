@@ -56,17 +56,13 @@ def vis_isocontour(img, img_IUV):
     plt.close()
 
     img_plt = cv2.imread(fig_name)
-    # print('img_plt shape {}'.format(img_plt.shape))
     # Resize and crop image to fit initial image size
     size_max = max(img.shape[1], img.shape[0])
     img_plt_resized= cv2.resize(img_plt[:,:,::-1], (size_max, size_max))
-    # print('img_plt_resized shape {}'.format(img_plt_resized.shape))
     diff_heigt = abs(img.shape[0] - img_plt_resized.shape[0])/2
     diff_width = abs(img.shape[1] - img_plt_resized.shape[1])/2
-    # print('diff height and diff width {} and {}'.format(diff_heigt, diff_width))
     img_plt_cropped = img_plt_resized[diff_heigt:img_plt_resized.shape[0]-diff_heigt,
         diff_width:img_plt_resized.shape[1]-diff_width].copy()
-    # print('img_plt_cropped shape {}'.format(img_plt_cropped.shape))
 
     return img_plt_cropped
 
@@ -137,19 +133,11 @@ def vis_densepose(
         alpha = 0.
         
     elif show_uv:
-        res = all_coords[:,:,::-1] #switch from RGB to BGR
+        res = all_coords # I, U and V channels
         alpha = 0.
 
     if show_border:
         res = vis_mask(res, all_inds, np.array([150., 20., 200.]),
             alpha=alpha, show_border=show_border, border_thick=border_thick)
-    
-    # Save IUV and INDS
-    # IUV_SaveName = os.path.basename(im_name).split('.')[0]+'_IUV.png'
-    # INDS_SaveName = os.path.basename(im_name).split('.')[0]+'_INDS.png'
-    # cv2.imwrite(os.path.join(output_dir, '{}'.format(IUV_SaveName)), all_coords )
-    # cv2.imwrite(os.path.join(output_dir, '{}'.format(INDS_SaveName)), all_inds )
-    # print('IUV written to: ' , os.path.join(output_dir, '{}'.format(IUV_SaveName)) )
-    ###
 
     return res
