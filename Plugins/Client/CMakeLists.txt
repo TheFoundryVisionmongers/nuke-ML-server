@@ -3,6 +3,7 @@
 # Setting up DLClient sources and dependencies
 set (DL_CLIENT_SOURCES
         DLClient.cpp
+        DLClientComms.cpp
         message.pb.cc
 )
 

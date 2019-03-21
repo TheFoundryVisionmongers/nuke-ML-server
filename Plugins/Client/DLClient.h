@@ -3,11 +3,6 @@
 #ifndef DLCLIENT_H
 #define DLCLIENT_H
 
-static const char* const CLASS = "DLClient";
-
-static const char* const HELP =
-    "Connects to a server for deep learning inference";
-
 // Standard plug-in include files.
 #include "DDImage/Iop.h"
 #include "DDImage/NukeWrapper.h"
@@ -17,13 +12,11 @@ static const char* const HELP =
 #include "DDImage/Thread.h"
 #include <DDImage/Enumeration_KnobI.h>
 
-// Includes for sockets and protobuf
-#include <netdb.h>
-#include "message.pb.h"
+// Local include files
+#include "DLClientComms.h"
 
-using byte = unsigned char;
 
-//! The Deep Learning (DL) plug-in connects Nuke to a Python server to apply DL models to images.
+//! The Deep Learning (DL) Client plug-in connects Nuke to a Python server to apply DL models to images.
 /*! This plug-in can connect to a server (given a host and port), which responds
     with a list of available Deep Learning (DL) models and options.
     On every /a engine() call, the image and model options are sent from Nuke to the server,
@@ -32,64 +25,22 @@ using byte = unsigned char;
 */
 class DLClient : public DD::Image::Iop
 {
-private:
-  std::vector<std::vector<float>> _inputs;
-  std::vector<int> _w;
-  std::vector<int> _h;
-  std::vector<int> _c;
-  std::vector<float> _result;
-  
-  bool _firstTime;
-  bool _isConnected;
-  std::string _host;
-  bool _hostIsValid;
-  int _port;
-  bool _portIsValid;
-  int _chosenModel;
-  bool _modelSelected;
 
-  DD::Image::Lock _lock;
-  DD::Image::Knob* _selectedModelknob;
-  std::vector<dlserver::Model> _serverModels;
+public:
+  // Static consts
+  static const char* const kClassName;
+  static const char* const kHelpString;
 
-  std::vector<int> _numInputs;
-  std::vector<std::vector<std::string>> _inputNames;
-
-  bool _showDynamic;
-  std::vector<int> _dynamicBoolValues;
-  std::vector<int> _dynamicIntValues;
-  std::vector<float> _dynamicFloatValues;
-  std::vector<std::string> _dynamicStringValues;
-  std::vector<std::string> _dynamicBoolNames;
-  std::vector<std::string> _dynamicIntNames;
-  std::vector<std::string> _dynamicFloatNames;
-  std::vector<std::string> _dynamicStringNames;
-  int _numNewKnobs;
-
-  int _socket;
-  // Following methods for client-server communication
-  //! Create a socket to connect to the server specified by _host and _port
-  bool setupConnection();
-  void connectLoop();
-  //! Connect to server, then send inference request and read inference response
-  bool processImage();
-  google::protobuf::uint32 readHdr(char* buf);
-  bool sendInfoRequest();
-  bool readInfoResponse();
-  bool readInfoResponse(google::protobuf::uint32 siz);
-  bool sendInferenceRequest();
-  bool readInferenceResponse();
-  bool readInferenceResponse(google::protobuf::uint32 siz);
-  void parseOptions();
-  void updateOptions(dlserver::Model* model);
-
-  bool _verbose;
-  void vprint(std::string msg);
+  static const char* const kDefaultHostName;
+  static const int         kDefaultPortNumber;
 
 public:
   //! Constructor. Initialize user controls to their default values.
   DLClient(Node* node);
-  ~DLClient();
+  virtual ~DLClient();
+
+public:
+  // DDImage::Iop overrides
 
   //! The maximum number of input connections the operator can have.
   int maximum_inputs() const;
@@ -124,6 +75,21 @@ public:
   const char* Class() const;
   const char* node_help() const;
 
+private:
+  // Private functions for talking to the server
+
+  //! Connect to server, then send inference request and read inference response
+  bool processImage(const std::string& hostStr, int port);
+
+  //! Parse the model options from the DL server.
+  void parseOptions();
+  //! Update any current options from any changes to the DL server.
+  void updateOptions(dlserver::Model* model);
+
+
+private:
+  // Private dynamic knob helper functions.
+
   // Getters of the class
   int getNumOfFloats() const;
   int getNumOfInts() const;
@@ -140,6 +106,45 @@ public:
   bool* getDynamicBoolValue(int idx);
   std::string* getDynamicStringValue(int idx);
   bool getShowDynamic() const;
+
+private:
+  // Private member variables
+
+  //! Our main client <--> server communications object
+  DLClientComms _comms;
+
+  std::vector<std::vector<float>> _inputs;
+  std::vector<int> _w;
+  std::vector<int> _h;
+  std::vector<int> _c;
+  std::vector<float> _result;
+  
+  bool _firstTime;
+  std::string _host;
+  bool _hostIsValid;
+  int _port;
+  bool _portIsValid;
+  int _chosenModel;
+  bool _modelSelected;
+
+  DD::Image::Lock _lock;
+  DD::Image::Knob* _selectedModelknob;
+  std::vector<dlserver::Model> _serverModels;
+
+  std::vector<int> _numInputs;
+  std::vector<std::vector<std::string>> _inputNames;
+
+  bool _showDynamic;
+  std::vector<int> _dynamicBoolValues;
+  std::vector<int> _dynamicIntValues;
+  std::vector<float> _dynamicFloatValues;
+  std::vector<std::string> _dynamicStringValues;
+  std::vector<std::string> _dynamicBoolNames;
+  std::vector<std::string> _dynamicIntNames;
+  std::vector<std::string> _dynamicFloatNames;
+  std::vector<std::string> _dynamicStringNames;
+  int _numNewKnobs;
+
 };
 
 #endif // DLCLIENT_H

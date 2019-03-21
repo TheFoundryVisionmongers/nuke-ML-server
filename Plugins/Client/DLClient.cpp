@@ -1,14 +1,12 @@
 // Copyright (c) 2018 The Foundry Visionmongers Ltd.  All Rights Reserved.
 
-// Includes for sockets and protobuf
-#include <iomanip>
-#include <unistd.h>
-#include <fcntl.h>
-#include <cstring>
-#include <arpa/inet.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-
 #include "DLClient.h"
+
+const char* const DLClient::kClassName = "DLClient";
+const char* const DLClient::kHelpString = "Connects to a Python server for Deep Learning inference.";
+
+const char* const DLClient::kDefaultHostName = "172.17.0.2";
+const int         DLClient::kDefaultPortNumber = 55555;
 
 using namespace DD::Image;
 
@@ -24,23 +22,20 @@ static Iop* DLClientCreate(Node* node)
    how to create one, and the menu item to show the user. The menu item may be
    0 if you do not want the operator to be visible.
  */
-const Iop::Description DLClient::description(CLASS, "Merge/DLClient",
-                                                        DLClientCreate);
+const Iop::Description DLClient::description(DLClient::kClassName, 0, DLClientCreate);
 
 //! Constructor. Initialize user controls to their default values.
 DLClient::DLClient(Node* node)
 : DD::Image::Iop(node)
 , _firstTime(true)
-, _isConnected(false)
-, _host("172.17.0.2")
+, _host(DLClient::kDefaultHostName)
 , _hostIsValid(true)
-, _port(55555)
+, _port(DLClient::kDefaultPortNumber)
 , _portIsValid(true)
 , _chosenModel(0)
 , _modelSelected(false)
 , _showDynamic(false)
 , _numNewKnobs(0)
-, _verbose(true)
 { }
 
 DLClient::~DLClient() {}
@@ -170,8 +165,8 @@ void DLClient::engine(int y, int x, int r,
         }
       }
       _firstTime = false;
-      if (_isConnected && _modelSelected) {
-        processImage();
+      if (_comms.isConnected() && _modelSelected) {
+        processImage(_host, _port);
       }
     }
     Row in(x, r);
@@ -201,414 +196,41 @@ void DLClient::engine(int y, int x, int r,
   }
 }
 
-void DLClient::vprint(std::string msg)
-{
-  if (_verbose) {
-    std::cerr << "Client -> " << msg << std::endl;
-  }
-}
-
-void* get_in_addr(struct sockaddr* sa)
-{
-  if (sa->sa_family == AF_INET) {
-    return &(((struct sockaddr_in *)sa)->sin_addr);
-  }
-  return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-}
-
-//! Create a socket to connect to the server specified by _host and _port
-bool DLClient::setupConnection()
+bool DLClient::processImage(const std::string& hostStr, int port)
 {
   try {
-    int status;
-    struct addrinfo hints;
-    struct addrinfo* aiResult;
-    // Before using hint you have to make sure that the data structure is empty
-    memset(&hints, 0, sizeof hints);
-    // Set the attribute for hint
-    hints.ai_family = AF_INET;       // IPV4 AF_INET
-    hints.ai_socktype = SOCK_STREAM; // TCP Socket SOCK_DGRAM
-    hints.ai_flags = 0;
-    hints.ai_protocol = IPPROTO_TCP;
-    char s[INET_ADDRSTRLEN]; // to store the network address as a char
+    _comms.connectLoop(hostStr, port);
 
-    // Fill the res data structure and make sure that the results make sense.
-    status = getaddrinfo(_host.c_str(), std::to_string(_port).c_str(), &hints, &aiResult);
-    inet_ntop(aiResult->ai_family, get_in_addr((struct sockaddr *)aiResult->ai_addr), s, sizeof s);
-    if (_verbose) {
-      std::cerr << "Client -> Trying to connect to " << s << std::endl;
-    }
-    if (status != 0) {
-      std::cerr << "Client -> getaddrinfo error: " << gai_strerror(status) << std::endl;
-      return 0;
-    }
+    std::cerr << "Sending inference request for model \"" << _serverModels[_chosenModel].name() << "\"" << std::endl;
 
-    // Create Socket and check if error occured afterwards
-    _socket = socket(aiResult->ai_family, aiResult->ai_socktype, aiResult->ai_protocol);
-    if (_socket < 0) {
-      std::cerr << "Client -> socket error: " << gai_strerror(_socket) << std::endl;
-      return 0;
+    // Create inference message
+    dlserver::RequestInference* req_inference = new dlserver::RequestInference;
+
+    dlserver::Model* m = new dlserver::Model(_serverModels[_chosenModel]);
+    updateOptions(m);
+    req_inference->set_allocated_model(m);
+
+    // Parse image. TODO: Check for multiple inputs, different channel size
+    for (int i = 0; i < getInputs().size(); i++) {
+      dlserver::Image* image = req_inference->add_image();
+      image->set_width(_w[i]);
+      image->set_height(_h[i]);
+      image->set_channels(3);
+
+      int size = _inputs[i].size() * sizeof(float);
+      byte* bytes = new byte[size];
+      std::memcpy(bytes, _inputs[i].data(), size);
+      image->set_image(bytes, size);
+      delete[] bytes;
     }
 
-    // Add socket option
-    int enable = 1;
-    if (setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
-      error("setsockopt(SO_REUSEADDR) failed");
-    }
-
-    long socket_flags;
-    // Set non-blocking connect socket
-    if ((socket_flags = fcntl(_socket, F_GETFL, NULL)) < 0) { // get socket flag argument
-      std::cerr << "Client -> socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")" << std::endl;
-      return 0;
-    }
-    socket_flags |= O_NONBLOCK; // add non-blocking flag to the socket flags
-    if (fcntl(_socket, F_SETFL, socket_flags) < 0) { // update socket flags
-      std::cerr << "Client -> socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")" << std::endl;
-      return 0;
-    }
-
-    // Connect to the server using the socket
-    status = connect(_socket, aiResult->ai_addr, aiResult->ai_addrlen);
-
-    int valopt;
-    fd_set myset;
-    struct timeval tv;
-    // Trying to connect with timeout
-    if (status < 0) {
-      if (errno == EINPROGRESS) {
-        tv.tv_sec = 0.25; // timeout in seconds to wait before failing to connect to host and port
-        tv.tv_usec = 0;
-        // Re-enable file descriptors fd that were cleared after last select() return
-        FD_ZERO(&myset);
-        FD_SET(_socket, &myset);
-        status = select(_socket + 1, NULL, &myset, NULL, &tv);
-        if (status > 0) {
-          // Socket selected for write
-          getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &aiResult->ai_addrlen);
-          if (valopt) {
-            std::cerr << "Error in socket connection " << valopt << " - " << strerror(valopt) << std::endl;
-            return 0;
-          }
-        }
-        else { // Unable to select socket
-          return 0;
-        }
-      }
-      else {
-        std::cerr << "Client -> socket error connecting " << errno << " " << strerror(errno) << std::endl;
-        return 0;
-      }
-    }
-    // Set to blocking mode again
-    if ((socket_flags = fcntl(_socket, F_GETFL, NULL)) < 0) { // get socket flag argument
-      std::cerr << "Client -> socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")" << std::endl;
-      return 0;
-    }
-    socket_flags &= (~O_NONBLOCK); // remove non-blocking flag from the socket
-    if (fcntl(_socket, F_SETFL, socket_flags) < 0) { // update socket flags
-      std::cerr << "Client -> socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")" << std::endl;
-      return 0;
-    }
-
-    inet_ntop(aiResult->ai_family, get_in_addr((struct sockaddr *)aiResult->ai_addr), s, sizeof s);
-    if (_verbose) {
-      std::cerr << "Client -> Connected to " << s << std::endl;
-    }
-
-    // Free the aiResult linked list after we are done with it
-    freeaddrinfo(aiResult);
-  }
-  catch (const std::exception &e) {
-    std::cerr << e.what();
-    return 0;
-  }
-  return 1;
-}
-
-void DLClient::connectLoop()
-{
-  const int kTimeout = 500000;
-  const int kMaxNumberOfTry = 5;
-  int i = 0;
-  while (!setupConnection()) {
-    usleep(kTimeout);
-    i++;
-    if (i >= kMaxNumberOfTry) {
-      std::cerr << "Client -> Error setting up connection" << std::endl;
-      vprint("-----------------------------------------------");
-      _isConnected = false;
-      return;
-    }
-    std::cerr << "Client -> Failing to connect. Attempts: " << i << std::endl;
-  }
-  _isConnected = true;
-}
-
-bool DLClient::processImage()
-{
-  try {
-    connectLoop();
-    sendInferenceRequest();
-    readInferenceResponse();
-    vprint("-----------------------------------------------");
+    _comms.sendInferenceRequest(req_inference);
+    _comms.readInferenceResponse(_result);
   }
   catch (...) {
     std::cerr << "Client -> Error receiving message" << std::endl;
   }
   return 0;
-}
-
-google::protobuf::uint32 DLClient::readHdr(char* buf)
-{
-  google::protobuf::uint32 size;
-  char tmp[13];
-  memcpy(tmp, buf, 12);
-  tmp[12] = '\0';
-  size = atoi(tmp);
-  return size;
-}
-
-bool DLClient::sendInfoRequest()
-{
-  int bytecount;
-  vprint("Sending info request");
-
-  // Create message
-  dlserver::RequestWrapper req_wrapper;
-  req_wrapper.set_info(true);
-  dlserver::RequestInfo* req_info = new dlserver::RequestInfo;
-  req_info->set_info(true);
-  req_wrapper.set_allocated_r1(req_info);
-  vprint("Created message");
-
-  // Generate the data which should be sent over the network
-  std::string request_s;
-  req_wrapper.SerializeToString(&request_s);
-  int length = request_s.size();
-  vprint("Serialized message");
-
-  // Creating header
-  char hdr_send[12];
-  std::ostringstream ss;
-  ss << std::setw(12) << std::setfill('0') << length;
-  ss.str().copy(hdr_send, 12);
-  vprint("Created char array of length " + std::to_string(length));
-
-  // Copy to char array
-  char* to_send = new char[12 + length];
-  for (int i = 0; i < 12; ++i) {
-    to_send[i] = hdr_send[i];
-  }
-
-  for (int i = 0; i < length; ++i) {
-    char val = request_s[i];
-    to_send[i + 12] = val;
-  }
-  vprint("Copied to char array");
-
-  // Send header with number of bytes
-  if ((bytecount = send(_socket, (void *)to_send, 12 + length, 0)) == -1) {
-    std::cerr << "Client -> Error sending data " << errno << std::endl;
-  }
-
-  vprint("Message sent");
-
-  delete[] to_send;
-
-  return true;
-}
-
-bool DLClient::readInfoResponse()
-{
-  int bytecount;
-
-  // Read header first
-  vprint("Reading header data");
-  char buffer_hdr[12];
-  if ((bytecount = recv(_socket, buffer_hdr, 12, 0)) == -1) {
-    std::cerr << "Client -> Error receiving data " << std::endl;
-  }
-  google::protobuf::uint32 siz = readHdr(buffer_hdr);
-
-  return readInfoResponse(siz);
-}
-
-bool DLClient::readInfoResponse(google::protobuf::uint32 siz)
-{
-  // Reading message data
-  vprint("Reading data of size: " + std::to_string(siz));
-  int bytecount;
-  char buffer[siz];
-  dlserver::RespondWrapper resp_wrapper;
-  resp_wrapper.set_info(true);
-
-  //Read the entire buffer
-  if ((bytecount = recv(_socket, (void *)buffer, siz, 0)) == -1) {
-    std::cerr << "Client -> Error receiving data " << errno << std::endl;
-  }
-
-  // Deserialize using protobuf functions
-  vprint("Deserializing message");
-  google::protobuf::io::ArrayInputStream ais(buffer, siz);
-  google::protobuf::io::CodedInputStream coded_input(&ais);
-  google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
-  resp_wrapper.ParseFromCodedStream(&coded_input);
-  coded_input.PopLimit(msgLimit);
-
-  // Parse message and fill in menu items for enumeration knob
-  _serverModels.clear();
-  _numInputs.clear();
-  _inputNames.clear();
-  std::vector<std::string> modelNames;
-  int numModels = resp_wrapper.r1().nummodels();
-  vprint("Server can serve " + std::to_string(numModels) + " models");
-  vprint("-----------------------------------------------");
-  for (int i = 0; i < numModels; i++) {
-    dlserver::Model m;
-    m = resp_wrapper.r1().models()[i];
-    modelNames.push_back(m.label());
-    _serverModels.push_back(m);
-    _numInputs.push_back(m.inputs_size());
-    std::vector<std::string> names;
-    for (int j = 0; j < m.inputs_size(); j++) {
-      dlserver::ImagePrototype p;
-      p = m.inputs()[j];
-      names.push_back(p.name());
-    }
-    _inputNames.push_back(names);
-  }
-
-  // Change enumeration knob choices
-  Enumeration_KnobI* pSelectModelEnum = _selectedModelknob->enumerationKnob();
-  pSelectModelEnum->menu(modelNames);
-
-  if (_chosenModel >= (int)numModels) {
-    _selectedModelknob->set_value(0);
-  }
-
-  _modelSelected = true;
-  _showDynamic = true;
-
-  return false;
-}
-
-bool DLClient::sendInferenceRequest() {
-  int bytecount;
-  vprint("Sending inference request for model \"" + _serverModels[_chosenModel].name() + "\"");
-
-  // Create message
-  dlserver::RequestWrapper req_wrapper;
-  req_wrapper.set_info(true);
-  dlserver::RequestInference* req_inference = new dlserver::RequestInference;
-
-  dlserver::Model* m = new dlserver::Model(_serverModels[_chosenModel]);
-  updateOptions(m);
-  req_inference->set_allocated_model(m);
-
-  // Parse image. TODO: Check for multiple inputs, different channel size
-  for (int i = 0; i < getInputs().size(); i++) {
-    dlserver::Image* image = req_inference->add_image();
-    image->set_width(_w[i]);
-    image->set_height(_h[i]);
-    image->set_channels(3);
-
-    int size = _inputs[i].size() * sizeof(float);
-    byte* bytes = new byte[size];
-    std::memcpy(bytes, _inputs[i].data(), size);
-    image->set_image(bytes, size);
-    delete[] bytes;
-  }
-
-  req_wrapper.set_allocated_r2(req_inference);
-
-  // Serialize message
-  std::string request_s;
-  req_wrapper.SerializeToString(&request_s);
-  int length = request_s.size();
-  vprint("Serialized message");
-
-  // Creating header
-  char hdr_send[12];
-  std::ostringstream ss;
-  ss << std::setw(12) << std::setfill('0') << length;
-  ss.str().copy(hdr_send, 12);
-  vprint("Created char array of length " + std::to_string(length));
-
-  // Copy to char array
-  char* to_send = new char[12 + length];
-  for (int i = 0; i < 12; ++i) {
-    to_send[i] = hdr_send[i];
-  }
-
-  for (int i = 0; i < length; ++i) {
-    char val = request_s[i];
-    to_send[i + 12] = val;
-  }
-  vprint("Copied to char array");
-
-  // Send header with number of bytes
-  if ((bytecount = send(_socket, (void *)to_send, 12 + length, 0)) == -1) {
-    std::cerr << "Client -> Error sending data " << errno << std::endl;
-  }
-
-  vprint("Message sent");
-
-  delete[] to_send;
-
-  return true;
-}
-
-bool DLClient::readInferenceResponse()
-{
-  int bytecount;
-  
-  // Read header first
-  vprint("Reading header data");
-  char buffer_hdr[12];
-  if ((bytecount = recv(_socket, buffer_hdr, 12, 0)) == -1) {
-    std::cerr << "Client -> Error receiving data " << std::endl;
-  }
-  google::protobuf::uint32 siz = readHdr(buffer_hdr);
-
-  return readInferenceResponse(siz);
-}
-
-bool DLClient::readInferenceResponse(google::protobuf::uint32 siz)
-{
-  vprint("Reading data of size: " + std::to_string(siz));
-  dlserver::RespondWrapper resp_wrapper;
-  resp_wrapper.set_info(true);
-
-  // Read the buffer
-  std::string output;
-  char buffer[1024];
-  int n;
-  while ((errno = 0, (n = recv(_socket, buffer, sizeof(buffer), 0)) > 0) ||
-         errno == EINTR) {
-    if (n > 0) {
-      output.append(buffer, n);
-    }
-  }
-
-  if (n < 0) {
-    std::cerr << "Client -> Error receiving data " << std::endl;
-  }
-
-  // Deserialize using protobuf functions
-  vprint("Deserializing message");
-  google::protobuf::io::ArrayInputStream ais(output.c_str(), siz);
-  google::protobuf::io::CodedInputStream coded_input(&ais);
-  google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
-  resp_wrapper.ParseFromCodedStream(&coded_input);
-  coded_input.PopLimit(msgLimit);
-
-  const dlserver::Image &img = resp_wrapper.r2().image(0);
-
-  const char* imdata = img.image().c_str();
-  std::memcpy(&_result[0], imdata, _result.size() * sizeof(float));
-
-  return false;
 }
 
 void DLClient::parseOptions()
@@ -742,12 +364,7 @@ void DLClient::knobs(Knob_Callback f)
 int DLClient::knob_changed(Knob* knobChanged)
 {
   if (knobChanged->is("host")) {
-    struct sockaddr_in sa;
-    struct sockaddr_in6 sa6;
-    bool is_ipv4 = inet_pton(AF_INET, _host.c_str(), &(sa.sin_addr)) != 0;
-    bool is_ipv6 = inet_pton(AF_INET6, _host.c_str(), &(sa6.sin6_addr)) != 0;
-    // check if correct ipv4 or ipv6 addresses
-    if (!is_ipv4 && !is_ipv6) {
+    if (!_comms.validateHostName(_host)) {
       error("Please insert a valid host ipv4 or ipv6 address.");
       _hostIsValid = false;
     }
@@ -770,13 +387,51 @@ int DLClient::knob_changed(Knob* knobChanged)
 
   if (knobChanged->is("connect")) {
     if (_portIsValid && _hostIsValid) {
-      connectLoop();
-      if (!_isConnected) {
+      _comms.connectLoop(_host, _port);
+      if (!_comms.isConnected()) {
         error("Could not connect to python server.");
       }
       else {
-        sendInfoRequest();
-        readInfoResponse();
+        _comms.sendInfoRequest();
+
+        // Read the response from the server
+        dlserver::RespondWrapper resp_wrapper;
+        _comms.readInfoResponse(resp_wrapper);
+
+        // Parse message and fill in menu items for enumeration knob
+        _serverModels.clear();
+        _numInputs.clear();
+        _inputNames.clear();
+        std::vector<std::string> modelNames;
+        int numModels = resp_wrapper.r1().nummodels();
+        std::cerr << "Server can serve " << std::to_string(numModels) << " models" << std::endl;
+        std::cerr << "-----------------------------------------------" << std::endl;
+        for (int i = 0; i < numModels; i++) {
+          dlserver::Model m;
+          m = resp_wrapper.r1().models()[i];
+          modelNames.push_back(m.label());
+          _serverModels.push_back(m);
+          _numInputs.push_back(m.inputs_size());
+          std::vector<std::string> names;
+          for (int j = 0; j < m.inputs_size(); j++) {
+            dlserver::ImagePrototype p;
+            p = m.inputs()[j];
+            names.push_back(p.name());
+          }
+          _inputNames.push_back(names);
+        }
+
+        // Change enumeration knob choices
+        Enumeration_KnobI* pSelectModelEnum = _selectedModelknob->enumerationKnob();
+        pSelectModelEnum->menu(modelNames);
+
+        if (_chosenModel >= (int)numModels) {
+          _selectedModelknob->set_value(0);
+        }
+
+        _modelSelected = true;
+        _showDynamic = true;
+
         _firstTime = true;
         parseOptions();
         _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
@@ -796,12 +451,12 @@ int DLClient::knob_changed(Knob* knobChanged)
 //! Return the name of the class.
 const char* DLClient::Class() const
 { 
-  return CLASS;
+  return DLClient::kClassName;
 }
 
 const char* DLClient::node_help() const
 { 
-  return HELP;
+  return DLClient::kHelpString;
 }
   
 int DLClient::getNumOfFloats() const
@@ -866,5 +521,5 @@ std::string* DLClient::getDynamicStringValue(int idx)
 
 bool DLClient::getShowDynamic() const
 { 
-  return _showDynamic && _isConnected;
+  return _showDynamic && _comms.isConnected();
 }
