@@ -1,6 +1,6 @@
 # Python-based Deep Learning Frame Server for Nuke
 
-This repository contains the client-server system enabling Deep Learning (DL) inference in Nuke. This work is split into two parts: a client Nuke plug-in [Plugins/Client/](Plugins/Client) and the Python frame server [Plugings/Server](Plugins/Server).
+This repository contains the client-server system enabling Deep Learning (DL) inference in Nuke. This work is split into two parts: a client Nuke plug-in [Plugins/Client/](Plugins/Client) and the Python frame server [Plugins/Server](Plugins/Server).
 
 The following models are provided as examples:
 - blur: a simple gaussian blur operation
