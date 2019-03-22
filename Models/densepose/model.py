@@ -37,10 +37,10 @@ class Model(BaseModel):
         self.name = 'DensePose'
 
         # TODO: Make cfg_file and weights options
-        self.cfg_file= 'models/densePose/DensePose_ResNet101_FPN_s1x-e2e.yaml'
+        self.cfg_file= 'models/densepose/DensePose_ResNet101_FPN_s1x-e2e.yaml'
         self.default_cfg = copy.deepcopy(AttrDict(cfg)) #cfg from detectron.core.config
         self.densepose_cfg = AttrDict()
-        self.weights = 'models/densePose/DensePose_ResNet101_FPN_s1x-e2e.pkl'
+        self.weights = 'models/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl'
         self.dummy_coco_dataset = dummy_datasets.get_coco_dataset()
 
         # Inference options

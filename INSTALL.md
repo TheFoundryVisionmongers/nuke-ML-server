@@ -93,7 +93,7 @@ To be able to run inference on both Densepose and Mask-RCNN deep learning models
   - Configuration: [DensePose_ResNet101_FPN_s1x-e2e.yaml](https://github.com/facebookresearch/DensePose/blob/master/configs/DensePose_ResNet101_FPN_s1x-e2e.yaml)
   - Corresponding weights: [DensePose_ResNet101_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
 
-And respectively move them to Models/mrcnn/ and Models/densePose/ folders.
+And respectively move them to Models/mrcnn/ and Models/densepose/ folders.
 
 ### Connect client and server
 
