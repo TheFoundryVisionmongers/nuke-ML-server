@@ -1,3 +1,15 @@
+# Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
+#
+# The inference method is based on:
+# Facebook infer_simple.py file:
+# https://github.com/facebookresearch/DensePose/blob/master/tools/infer_simple.py
+# Licensed under the Facebook Densepose License:
+# (https://github.com/facebookresearch/DensePose/blob/master/LICENSE)
+# A copy of the license can be found in the current folder "LICENSE_densepose",
+#
+# We are sharing this under the "Attribution-NonCommercial 4.0 International"
+########################################################################
+
 from ..baseModel import BaseModel
 
 from caffe2.python import workspace

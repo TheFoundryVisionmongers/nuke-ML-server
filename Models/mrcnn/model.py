@@ -1,3 +1,13 @@
+# Copyright (c) 2018 The Foundry Visionmongers Ltd.  All Rights Reserved.
+#
+# The inference method is based on:
+# Facebook infer_simple.py file:
+# https://github.com/facebookresearch/Detectron/blob/master/tools/infer_simple.py
+# Licensed under the Facebook Detectron License:
+# (https://github.com/facebookresearch/Detectron/blob/master/LICENSE)
+# A copy of the license can be found in the current folder "LICENSE_detectron",
+########################################################################
+
 from ..baseModel import BaseModel
 
 from caffe2.python import workspace

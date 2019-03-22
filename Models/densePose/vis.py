@@ -1,8 +1,13 @@
 # Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
 #
-# Using the Facebook visualisation library, create a custom
-# visualisation module of densepose UV grid output
+# Based on:
+# Facebook vis.py file:
+# https://github.com/facebookresearch/DensePose/blob/master/detectron/utils/vis.py
+# Licensed under the Facebook Densepose License:
+# (https://github.com/facebookresearch/DensePose/blob/master/LICENSE)
+# A copy of the license can be found in the current folder "LICENSE_densepose",
 #
+# We are sharing this under the "Attribution-NonCommercial 4.0 International"
 ########################################################################
 
 import numpy as np
