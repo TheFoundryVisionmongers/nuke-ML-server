@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Foundry Visionmongers Ltd.  All Rights Reserved.
+// Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
 
 // Includes for sockets and protobuf
 #include <iomanip>
@@ -402,7 +402,7 @@ google::protobuf::uint32 DLClientComms::readHdr(char* buf)
 {
   google::protobuf::uint32 size;
   char tmp[13];
-  memcpy(tmp, buf, 12);
+  std::memcpy(tmp, buf, 12);
   tmp[12] = '\0';
   size = atoi(tmp);
   return size;

@@ -1,5 +1,7 @@
 // Copyright (c) 2018 The Foundry Visionmongers Ltd.  All Rights Reserved.
 
+#include <cstring>
+
 #include "DLClient.h"
 
 const char* const DLClient::kClassName = "DLClient";
