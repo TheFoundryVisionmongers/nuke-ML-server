@@ -3,7 +3,7 @@
 from detectron.utils.collections import AttrDict
 import numpy as np
 
-def dictEqual(d1, d2):
+def dict_equal(d1, d2):
     """Recursively compute if two dictionaries are equals both in keys and values
 
         # Arguments:
@@ -30,6 +30,6 @@ def dictEqual(d1, d2):
                 return False
             else:
                 if type(d2[k]) == dict:
-                    dictEqual(d1[k], d2[k])
+                    dict_equal(d1[k], d2[k])
                     continue
     return True

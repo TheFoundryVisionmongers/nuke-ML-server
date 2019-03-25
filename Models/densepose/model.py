@@ -26,7 +26,7 @@ import detectron.datasets.dummy_datasets as dummy_datasets
 import detectron.utils.c2 as c2_utils
 
 import vis as vis_utils
-from utils import dictEqual
+from utils import dict_equal
 
 import numpy as np
 import copy
@@ -93,7 +93,7 @@ class Model(BaseModel):
         else:
             # There is a global config file for all detectron models (Densepose, Mask RCNN..)
             # Check if current global config file is correct for densepose
-            if not dictEqual(self.densepose_cfg, cfg):
+            if not dict_equal(self.densepose_cfg, cfg):
                 # Load densepose configuration file
                 merge_cfg_from_cfg(self.densepose_cfg)
 
