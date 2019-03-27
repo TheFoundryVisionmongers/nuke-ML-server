@@ -65,7 +65,7 @@ sudo curl -sSL https://get.docker.com/ | sh
 # Start Docker
 sudo systemctl start docker
 ```
-Install nvidia-docker (NVIDIA GPU-enabled docker) for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. For CentOS/RHEL, follow the instructions using the official `docker-ce` package.
+Install nvidia-docker (NVIDIA GPU-enabled docker) for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository (For CentOS/RHEL, follow the instructions using the official `docker-ce` package).
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
@@ -111,8 +111,8 @@ python server.py 55555
 ```
 4. In Nuke, click on the DLClient connect button, you should have the three models available.
 
-### Implement your own model
+### Add your own model
 
-To create your own model, create a new folder in the /Models directory with your model name. At the minimum, this folder needs to include an empty __init__.py file and a model.py file that contains a Model class inheriting from BaseModel.
+To implement your own model, you can create a new folder in the /Models directory with your model name. At the minimum, this folder needs to include an empty `__init__.py` file and a `model.py` file that contains a Model class inheriting from BaseModel.
 
 You can copy the simple [Models/blur/](Models/blur) model as a starting point, and implement your own model looking at the examples of blur, densepose and mrcnn.
