@@ -202,6 +202,9 @@ bool DLClient::processImage(const std::string& hostStr, int port)
 {
   try {
     _comms.connectLoop(hostStr, port);
+    if (!_comms.isConnected()) {
+      error("Could not connect to python server.");
+    }
 
     std::cerr << "Sending inference request for model \"" << _serverModels[_chosenModel].name() << "\"" << std::endl;
 
