@@ -5,14 +5,19 @@ The Nuke Deep Learning (DL) installation can be divided into compiling the DLCli
 **Requirements:**
 - NVIDIA GPU, Linux with Nuke installed
 - CMake (minimum 3.10)
-- Protobuf
+- Protobuf (tested with 2.5.0 and 3.5.1)
 - Docker
 
 ## Installing the client
 
 ### Install Protobuf
 
-Protobuf may be installed with package manager but we recommend compiling it from source following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the protobuf github repository.
+Protobuf may be installed with package manager, for example:
+```
+sudo yum install protobuf-devel
+```
+
+However we recommend compiling it from source following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the protobuf github repository.
 
 Get Protobuf source file for C++, for instance version 3.5.1:
 ```
@@ -36,10 +41,9 @@ export LD_LIBRARY_PATH=/path/to/protobuf/:$LD_LIBRARY_PATH
 
 ### Compile DLClient Nuke node
 
-Clone the nuke-dl-server repository:
+If not already cloned, fetch the nuke-dl-server repository:
 ```
-# NUKEDLSERVER=/path/to/clone/nuke-DL-server
-git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server $NUKEDLSERVER
+git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server
 ```
 Execute the commands below to compile the client DLClient.so plug-in, setting the NUKE_INSTALL_PATH to point to the folder of the desired Nuke version:
 ```
@@ -47,7 +51,7 @@ mkdir build && cd build
 cmake -DNUKE_INSTALL_PATH="/path/to/Nuke11.3v1" ..
 make
 ```
-Your DLClient.so plug-in will now be in the 'build' folder, it can be left there, moved to your ~/.nuke folder, or to another folder entirely. Before it can be used, Nuke needs to know where it lives. You'll need to update NUKE_PATH to point to the DLClient.so plug-in (This can be skipped if it was moved to the root of your ~/.nuke folder, or the path was added in Nuke through Python):
+The DLClient.so plug-in will now be in the 'build/Plugins/Client' folder. Before it can be used, Nuke needs to know where it lives. One way to do this is to update the NUKE_PATH environment variable to point to the DLClient.so plug-in (This can be skipped if it was moved to the root of your ~/.nuke folder, or the path was added in Nuke through Python):
 ```
 export NUKE_PATH=/path/to/lib/:$NUKE_PATH
 ```
@@ -73,13 +77,14 @@ Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 sudo docker pull nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 # Build the docker image on top of the base image
 cd Plugins/Server/
+# Choose your own label for <docker_image_name>, it must be lowercase.
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
-Create a docker container on top of the created docker image:
+Create a docker container on top of the created docker image, referencing the docker image label from the previous step:
 ```
-sudo nvidia-docker run -v /path/to/Models/:/workspace/dl-server/models:ro -it <docker_image_name>
+sudo nvidia-docker run -v /absolute/path/to/nuke-DL-server/Models/:/workspace/dl-server/models:ro -it <docker_image_name>
 ```
-Note: the `-v` (volume) options links your Models/ folder with the models/ folder inside your container. You only need to modify `/path/to/Models/`, leave the `/workspace/dl-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
+Note: the `-v` (volume) options links your nuke-DL-server/Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-DL-server/Models/`, leave the `/workspace/dl-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
 
 ## Getting started
 
