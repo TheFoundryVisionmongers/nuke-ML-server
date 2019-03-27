@@ -14,7 +14,7 @@ The Nuke Deep Learning (DL) installation can be divided into compiling the DLCli
 
 Protobuf may be installed with package manager but we recommend compiling it from source following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the protobuf github repository.
 
-Get Protobuf 3.5.1 source file for C++:
+Get Protobuf source file for C++, for instance version 3.5.1:
 ```
 wget https://github.com/protocolbuffers/protobuf/releases/download/v3.5.1/protobuf-cpp-3.5.1.tar.gz
 # Extract file in current directory
@@ -77,9 +77,9 @@ sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 Create a docker container on top of the created docker image:
 ```
-sudo nvidia-docker run -v /path/to/Models/:/workspace/dl-server/models:ro --name <container_name> -it <docker_image_name>
+sudo nvidia-docker run -v /path/to/Models/:/workspace/dl-server/models:ro -it <docker_image_name>
 ```
-Note: the `-v` (volume) options links your Models/ folder with the models/ folder inside your container. Thus you can add models in Models/ that will be directly available and updated inside your container.
+Note: the `-v` (volume) options links your Models/ folder with the models/ folder inside your container. You only need to modify `/path/to/Models/`, leave the `/workspace/dl-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
 
 ## Getting started
 
