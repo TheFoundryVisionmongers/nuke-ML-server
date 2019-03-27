@@ -19,7 +19,7 @@ RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-la
     chmod +x ~/miniconda.sh && \
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
-    /opt/conda/bin/conda install -y python=$PYTHON_VERSION numpy pyyaml scipy ipython mkl mkl-include cython typing
+    /opt/conda/bin/conda install -y python=$PYTHON_VERSION numpy pyyaml=3.13 scipy ipython mkl mkl-include cython typing
 RUN /opt/conda/bin/conda install -y magma-cuda90 -c pytorch && \
     /opt/conda/bin/conda install -y pytorch-nightly -c pytorch && \
     /opt/conda/bin/conda clean -ya
