@@ -69,7 +69,7 @@ sudo curl -sSL https://get.docker.com/ | sh
 # Start Docker
 sudo systemctl start docker
 ```
-Install nvidia-docker (NVIDIA GPU-enabled docker) for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository.
+Install nvidia-docker (NVIDIA GPU-enabled docker) for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository (For CentOS/RHEL, follow the instructions using the official `docker-ce` package).
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
@@ -77,13 +77,16 @@ Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 sudo docker pull nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 # Build the docker image on top of the base image
 cd Plugins/Server/
-# Choose your own label for <docker_image_name>, it must be lowercase.
+# Choose your own label for <docker_image_name>, it must be lowercase. e.g. dlserver.
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
-Create a docker container on top of the created docker image, referencing the docker image label from the previous step:
+
+Create a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
+
 ```
 sudo nvidia-docker run -v /absolute/path/to/nuke-DL-server/Models/:/workspace/dl-server/models:ro -it <docker_image_name>
 ```
+
 Note: the `-v` (volume) options links your nuke-DL-server/Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-DL-server/Models/`, leave the `/workspace/dl-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
 
 ## Getting started
@@ -114,9 +117,8 @@ python server.py 55555
 ```
 4. In Nuke, click on the DLClient connect button, you should have the three models available.
 
-<!-- ### Implement your own model (XXX To finish, here or in another section?)
+### Add your own model
 
-All available models on the server live in their own folder within the /Models folder. At the very minimum, each of these model folders need to include an empty __init__.py file and a model.py file that contains a Model class inheriting from BaseModel.
+To implement your own model, you can create a new folder in the /Models directory with your model name. At the minimum, this folder needs to include an empty `__init__.py` file and a `model.py` file that contains a Model class inheriting from BaseModel.
 
-To create your own model, create a new folder in the /Models directory.
-To go further and use your own trained deep learning model in Nuke -->
+You can copy the simple [Models/blur/](Models/blur) model as a starting point, and implement your own model looking at the examples of blur, densepose and mrcnn.
