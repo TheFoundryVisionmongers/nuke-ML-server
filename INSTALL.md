@@ -12,7 +12,7 @@ The Nuke Deep Learning (DL) installation can be divided into compiling the DLCli
 
 ### Install Protobuf
 
-Protobuf may be installed with package manager, for example:
+Protobuf may be installed with a package manager, for example:
 ```
 sudo yum install protobuf-devel
 ```
@@ -41,7 +41,7 @@ export LD_LIBRARY_PATH=/path/to/protobuf/:$LD_LIBRARY_PATH
 
 ### Compile DLClient Nuke node
 
-If not already cloned, fetch the nuke-dl-server repository:
+If not already cloned, fetch the 'nuke-dl-server' repository:
 ```
 git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server
 ```
