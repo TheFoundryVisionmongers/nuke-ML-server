@@ -4,18 +4,14 @@ package dlserver;
 
 message RequestWrapper {
 	required bool info = 1;
-	oneof request {
-		RequestInfo r1 = 2;
-		RequestInference r2 = 3;
-	}
+	optional RequestInfo r1 = 2;
+	optional RequestInference r2 = 3;
 }
 
 message RespondWrapper {
 	required bool info = 1;
-	oneof response {
-		RespondInfo r1 = 2;
-		RespondInference r2 = 3;
-	}
+	optional RespondInfo r1 = 2;
+	optional RespondInference r2 = 3;
 }
 
 message RequestInfo {

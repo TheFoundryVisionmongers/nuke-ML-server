@@ -1,12 +1,14 @@
 // Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
 
 // Includes for sockets and protobuf
+#include <iostream>
 #include <iomanip>
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
 #include <sstream>
 #include <arpa/inet.h>
+#include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "DLClientComms.h"

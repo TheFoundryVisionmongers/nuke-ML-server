@@ -253,7 +253,7 @@ void DLClient::parseOptions()
 
   for (int i = 0; i < m.booloptions_size(); i++) {
     dlserver::BoolOption o;
-    o = m.booloptions()[i];
+    o = m.booloptions(i);
     if (o.value()) {
       _dynamicBoolValues.push_back(1);
     }
@@ -265,21 +265,21 @@ void DLClient::parseOptions()
 
   for (int i = 0; i < m.intoptions_size(); i++) {
     dlserver::IntOption o;
-    o = m.intoptions()[i];
+    o = m.intoptions(i);
     _dynamicIntValues.push_back(o.value());
     _dynamicIntNames.push_back(o.name());
   }
 
   for (int i = 0; i < m.floatoptions_size(); i++) {
     dlserver::FloatOption o;
-    o = m.floatoptions()[i];
+    o = m.floatoptions(i);
     _dynamicFloatValues.push_back(o.value());
     _dynamicFloatNames.push_back(o.name());
   }
 
   for (int i = 0; i < m.stringoptions_size(); i++) {
     dlserver::StringOption o;
-    o = m.stringoptions()[i];
+    o = m.stringoptions(i);
     _dynamicStringValues.push_back(o.value());
     _dynamicStringNames.push_back(o.name());
   }
@@ -413,14 +413,14 @@ int DLClient::knob_changed(Knob* knobChanged)
         std::cerr << "-----------------------------------------------" << std::endl;
         for (int i = 0; i < numModels; i++) {
           dlserver::Model m;
-          m = resp_wrapper.r1().models()[i];
+          m = resp_wrapper.r1().models(i);
           modelNames.push_back(m.label());
           _serverModels.push_back(m);
           _numInputs.push_back(m.inputs_size());
           std::vector<std::string> names;
           for (int j = 0; j < m.inputs_size(); j++) {
             dlserver::ImagePrototype p;
-            p = m.inputs()[j];
+            p = m.inputs(j);
             names.push_back(p.name());
           }
           _inputNames.push_back(names);
