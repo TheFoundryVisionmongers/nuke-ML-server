@@ -41,7 +41,7 @@ export LD_LIBRARY_PATH=/path/to/protobuf/:$LD_LIBRARY_PATH
 
 ### Compile DLClient Nuke node
 
-If not already cloned, fetch the 'nuke-dl-server' repository:
+If not already cloned, fetch the `nuke-DL-server` repository:
 ```
 git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server
 ```
