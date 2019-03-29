@@ -4,7 +4,7 @@
 #define DLCLIENT_H
 
 // Standard plug-in include files.
-#include "DDImage/Iop.h"
+#include "DDImage/PlanarIop.h"
 #include "DDImage/NukeWrapper.h"
 #include "DDImage/Row.h"
 #include "DDImage/Tile.h"
@@ -23,7 +23,7 @@
     there the server can process the image by doing Deep Learning inference,
     finally the resulting image is sent back to Nuke.
 */
-class DLClient : public DD::Image::Iop
+class DLClient : public DD::Image::PlanarIop
 {
 
 public:
@@ -33,6 +33,9 @@ public:
 
   static const char* const kDefaultHostName;
   static const int         kDefaultPortNumber;
+
+private:
+  static const int kDefaultNumberOfChannels;
 
 public:
   //! Constructor. Initialize user controls to their default values.
@@ -52,9 +55,9 @@ public:
   */
   const char* input_label(int input, char* buffer) const;
 
-  void _validate(bool);
-  void _request(int x, int y, int r, int t, DD::Image::ChannelMask channels, int count);
-  void _open();
+  bool useStripes() const;
+  bool renderFullPlanes() const;
+  void getRequests(const DD::Image::Box& box, const DD::Image::ChannelSet& channels, int count, DD::Image::RequestOutput &reqData) const;
 
   // This function does all the work.
   /*! For each line in the area passed to request(), this will be called. It must
@@ -62,7 +65,7 @@ public:
       horizontal positions \a x and \a r, and write it to the passed row
       structure. Usually this works by asking the input for data, and modifying it.
   */
-  void engine(int y, int x, int r, DD::Image::ChannelMask channels, DD::Image::Row &out);
+  void renderStripe(DD::Image::ImagePlane& imagePlane);
 
   //! Information to the plug-in manager of DDNewImage/Nuke.
   static const DD::Image::Iop::Description description;
@@ -76,16 +79,19 @@ public:
   const char* node_help() const;
 
 private:
-  // Private functions for talking to the server
+   //! Allocates and copies input pixels to raw buffers.
+  void initBuffers(DD::Image::ImagePlane& imagePlane);
+  void initInputs(DD::Image::ImagePlane &imagePlane);
+  void initInput(int input, DD::Image::ImagePlane &imagePlane);
+  void renderOutputBuffer(DD::Image::ImagePlane& imagePlane);
 
+  // Private functions for talking to the server
   //! Connect to server, then send inference request and read inference response
   bool processImage(const std::string& hostStr, int port);
-
   //! Parse the model options from the DL server.
   void parseOptions();
   //! Update any current options from any changes to the DL server.
   void updateOptions(dlserver::Model* model);
-
 
 private:
   // Private dynamic knob helper functions.
@@ -119,7 +125,6 @@ private:
   std::vector<int> _c;
   std::vector<float> _result;
   
-  bool _firstTime;
   std::string _host;
   bool _hostIsValid;
   int _port;
@@ -127,7 +132,6 @@ private:
   int _chosenModel;
   bool _modelSelected;
 
-  DD::Image::Lock _lock;
   DD::Image::Knob* _selectedModelknob;
   std::vector<dlserver::Model> _serverModels;
 

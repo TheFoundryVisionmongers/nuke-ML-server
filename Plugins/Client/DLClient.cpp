@@ -10,6 +10,8 @@ const char* const DLClient::kHelpString = "Connects to a Python server for Deep 
 const char* const DLClient::kDefaultHostName = "172.17.0.2";
 const int         DLClient::kDefaultPortNumber = 55555;
 
+const int DLClient::kDefaultNumberOfChannels = 3;
+
 using namespace DD::Image;
 
 /*! This is a function that creates an instance of the operator, and is
@@ -28,8 +30,7 @@ const Iop::Description DLClient::description(DLClient::kClassName, 0, DLClientCr
 
 //! Constructor. Initialize user controls to their default values.
 DLClient::DLClient(Node* node)
-: DD::Image::Iop(node)
-, _firstTime(true)
+: DD::Image::PlanarIop(node)
 , _host(DLClient::kDefaultHostName)
 , _hostIsValid(true)
 , _port(DLClient::kDefaultPortNumber)
@@ -83,116 +84,106 @@ const char* DLClient::input_label(int input, char* buffer) const
   }
 }
 
-void DLClient::_validate(bool for_real)
+bool DLClient::useStripes() const
 {
-  copy_info(); // copy bbox channels etc from input0, which will validate it.
+  return false;
 }
 
-void DLClient::_request(int x, int y, int r, int t, ChannelMask channels, int count)
+bool DLClient::renderFullPlanes() const
 {
-  // request all input input as we are going to search the whole input area
-  // ChannelSet readChannels = input0().info().channels();
-  // input(0)->request( readChannels, count );
-  for (int i = 0; i < getInputs().size(); i++) {
-    ChannelSet readChannels = input(i)->info().channels();
+  return true;
+}
+
+void DLClient::getRequests(const Box& box, const ChannelSet& channels, int count, RequestOutput &reqData) const
+{
+    // request all input input as we are going to search the whole input area
+  for (int i = 0, endI = getInputs().size(); i < endI; i++) {
+    const ChannelSet readChannels = input(i)->info().channels();
     input(i)->request(readChannels, count);
   }
 }
 
-void DLClient::_open()
+void DLClient::renderStripe(ImagePlane& imagePlane)
 {
-  _firstTime = true;
+  if (aborted() || cancelled()) {
+    return;
+  }
+  input0().fetchPlane(imagePlane);
+  imagePlane.makeUnique();
+
+  initBuffers(imagePlane);
+  if (_comms.isConnected() && _modelSelected) {
+    processImage(_host, _port);
+  }
+  renderOutputBuffer(imagePlane);
 }
 
-/*! For each line in the area passed to request(), this will be called. It must
-   calculate the image data for a region at vertical position \a y, and between
-   horizontal positions \a x and \a r, and write it to the passed row
-   structure. Usually this works by asking the input for data, and modifying
-   it.
- */
-void DLClient::engine(int y, int x, int r,
-                      ChannelMask channels, Row &row)
+void DLClient::initBuffers(ImagePlane& imagePlane)
 {
-  Format masterFormat = input(0)->format();
+  const Box box = imagePlane.bounds();
+  const int numberOfInputs = getInputs().size();
+  _inputs.resize(numberOfInputs);
+  _w.resize(numberOfInputs);
+  _h.resize(numberOfInputs);
+  _c.resize(numberOfInputs);
+  _result.resize(box.w() * box.h() * kDefaultNumberOfChannels);
+  initInputs(imagePlane);
+}
 
-  const int masterFx = masterFormat.x();
-  const int masterFy = masterFormat.y();
-  const int masterFr = masterFormat.r();
-  const int masterFt = masterFormat.t();
+void DLClient::initInputs(ImagePlane &imagePlane)
+{
+  for (int i = 0, endI = getInputs().size(); i < endI; i++) {
+    initInput(i, imagePlane);
+  }
+}
 
-  {
-    Guard guard(_lock);
-    if (_firstTime) {
-      _inputs.resize(getInputs().size());
-      _w.resize(getInputs().size());
-      _h.resize(getInputs().size());
-      _c.resize(getInputs().size());
-      _result.resize(masterFr * masterFt * 3);
-      for (int i = 0; i < getInputs().size(); i++) {
-        Format format = input(i)->format();
+void DLClient::initInput(int i, ImagePlane &imagePlane)
+{
+  const Box box = imagePlane.bounds();
+  const int fx = box.x();
+  const int fy = box.y();
+  const int fr = box.r();
+  const int ft = box.t();
 
-        const int fx = format.x();
-        const int fy = format.y();
-        const int fr = format.r();
-        const int ft = format.t();
+  _inputs[i].resize(box.w() * box.h() * kDefaultNumberOfChannels);
+  _w[i] = fr;
+  _h[i] = ft;
+  float* fullImagePtr = &_inputs[i][0];
 
-        ChannelSet readChannels = input(i)->info().channels();
-
-        Interest interest(*input(i), fx, fy, fr, ft, readChannels, true);
-        interest.unlock();
-
-        _inputs[i].resize(fr * ft * 3);
-        _w[i] = fr;
-        _h[i] = ft;
-        float* fullImagePtr = &_inputs[i][0];
-
-        for (int ry = fy; ry < ft; ry++) {
-          progressFraction(ry, ft - fy);
-          Row row(fx, fr);
-          row.get(*input(i), ry, fx, fr, readChannels);
-          if (aborted()) {
-            return;
-          }
-          foreach (z, readChannels) {
-            if (strcmp(getLayerName(z), "rgb") == 0) {
-              const float* CUR = row[z] + fx;
-              const float* END = row[z] + fr;
-              int currentPos = 0;
-              while (CUR < END) {
-                int fullPos = colourIndex(z) * fr * ft + ry * fr + currentPos++;
-                fullImagePtr[fullPos] = (*CUR++);
-              }
-            }
-          }
-        }
+  for (int z = 0; z < kDefaultNumberOfChannels; z++) {
+    for(int ry = fy; ry < ft; ry++) {
+      progressFraction(ry, ft - fy);
+      if (aborted()) {
+        return;
       }
-      _firstTime = false;
-      if (_comms.isConnected() && _modelSelected) {
-        processImage(_host, _port);
+      ImageTileReadOnlyPtr tile = imagePlane.readableAt(ry, z);
+      int currentPos = 0;
+      for(int rx = fx; rx < fr; rx++) {
+        int fullPos = z * fr * ft + ry * fr + currentPos++;
+        fullImagePtr[fullPos] = tile[rx];
       }
     }
-    Row in(x, r);
-    in.get(*input(0), y, x, r, channels);
-    if (aborted()) {
-      return;
-    }
-    float* fullImagePtr = &_result[0];
+  }
+}
 
-    foreach (z, channels) {
-      float* CUR = row.writable(z) + x;
-      const float* inptr = in[z] + x;
-      const float* END = row[z] + r;
-      int currentPos = x;
-      if (strcmp(getLayerName(z), "rgb") == 0) {
-        while (CUR < END) {
-          int fullPos = colourIndex(z) * masterFr * masterFt + y * masterFr + currentPos++;
-          *CUR++ = fullImagePtr[fullPos];
-        }
+void DLClient::renderOutputBuffer(ImagePlane& imagePlane)
+{
+  const Box box = imagePlane.bounds();
+  const int fx = box.x();
+  const int fy = box.y();
+  const int fr = box.r();
+  const int ft = box.t();
+
+  float* fullImagePtr = &_result[0];
+  for (int z = 0; z < kDefaultNumberOfChannels; z++) {
+    for(int ry = fy; ry < ft; ry++) {
+      if (aborted()) {
+        return;
       }
-      else {
-        while (CUR < END) {
-          *CUR++ = *inptr++;
-        }
+      int currentPos = 0;
+      for(int rx = fx; rx < fr; rx++) {
+        int fullPos = z * fr * ft + ry * fr + currentPos++;
+        imagePlane.writableAt(rx, ry, z)  = fullImagePtr[fullPos];
       }
     }
   }
@@ -205,12 +196,10 @@ bool DLClient::processImage(const std::string& hostStr, int port)
     if (!_comms.isConnected()) {
       error("Could not connect to python server.");
     }
-
     std::cerr << "Sending inference request for model \"" << _serverModels[_chosenModel].name() << "\"" << std::endl;
 
     // Create inference message
     dlserver::RequestInference* req_inference = new dlserver::RequestInference;
-
     dlserver::Model* m = new dlserver::Model(_serverModels[_chosenModel]);
     updateOptions(m);
     req_inference->set_allocated_model(m);
@@ -230,7 +219,17 @@ bool DLClient::processImage(const std::string& hostStr, int port)
     }
 
     _comms.sendInferenceRequest(req_inference);
-    _comms.readInferenceResponse(_result);
+    dlserver::RespondWrapper resp_wrapper;
+    _comms.readInferenceResponse(resp_wrapper);
+    // Check if error occured in the server
+    if (resp_wrapper.has_error()) {
+      const char * errorMsg = resp_wrapper.error().msg().c_str();
+      error(errorMsg);
+    }
+    // Get the resulting image data
+    const dlserver::Image &img = resp_wrapper.r2().image(0);
+    const char* imdata = img.image().c_str();
+    std::memcpy(&_result[0], imdata, _result.size() * sizeof(float));
   }
   catch (...) {
     std::cerr << "Client -> Error receiving message" << std::endl;
@@ -251,9 +250,9 @@ void DLClient::parseOptions()
   _dynamicFloatNames.clear();
   _dynamicStringNames.clear();
 
-  for (int i = 0; i < m.booloptions_size(); i++) {
+  for (int i = 0, endI = m.bool_options_size(); i < endI; i++) {
     dlserver::BoolOption o;
-    o = m.booloptions(i);
+    o = m.bool_options(i);
     if (o.value()) {
       _dynamicBoolValues.push_back(1);
     }
@@ -262,24 +261,21 @@ void DLClient::parseOptions()
     }
     _dynamicBoolNames.push_back(o.name());
   }
-
-  for (int i = 0; i < m.intoptions_size(); i++) {
+  for (int i = 0, endI = m.int_options_size(); i < endI; i++) {
     dlserver::IntOption o;
-    o = m.intoptions(i);
+    o = m.int_options(i);
     _dynamicIntValues.push_back(o.value());
     _dynamicIntNames.push_back(o.name());
   }
-
-  for (int i = 0; i < m.floatoptions_size(); i++) {
+  for (int i = 0, endI = m.float_options_size(); i < endI; i++) {
     dlserver::FloatOption o;
-    o = m.floatoptions(i);
+    o = m.float_options(i);
     _dynamicFloatValues.push_back(o.value());
     _dynamicFloatNames.push_back(o.name());
   }
-
-  for (int i = 0; i < m.stringoptions_size(); i++) {
+  for (int i = 0, endI = m.string_options_size(); i < endI; i++) {
     dlserver::StringOption o;
-    o = m.stringoptions(i);
+    o = m.string_options(i);
     _dynamicStringValues.push_back(o.value());
     _dynamicStringNames.push_back(o.name());
   }
@@ -287,30 +283,30 @@ void DLClient::parseOptions()
 
 void DLClient::updateOptions(dlserver::Model* model)
 {
-  model->clear_booloptions();
+  model->clear_bool_options();
   for (int i = 0; i < _dynamicBoolValues.size(); i++) {
-    ::dlserver::BoolOption* opt = model->add_booloptions();
+    ::dlserver::BoolOption* opt = model->add_bool_options();
     opt->set_name(_dynamicBoolNames[i]);
     opt->set_value(_dynamicBoolValues[i]);
   }
 
-  model->clear_intoptions();
+  model->clear_int_options();
   for (int i = 0; i < _dynamicIntValues.size(); i++) {
-    ::dlserver::IntOption* opt = model->add_intoptions();
+    ::dlserver::IntOption* opt = model->add_int_options();
     opt->set_name(_dynamicIntNames[i]);
     opt->set_value(_dynamicIntValues[i]);
   }
 
-  model->clear_floatoptions();
+  model->clear_float_options();
   for (int i = 0; i < _dynamicFloatValues.size(); i++) {
-    ::dlserver::FloatOption* opt = model->add_floatoptions();
+    ::dlserver::FloatOption* opt = model->add_float_options();
     opt->set_name(_dynamicFloatNames[i]);
     opt->set_value(_dynamicFloatValues[i]);
   }
 
-  model->clear_stringoptions();
+  model->clear_string_options();
   for (int i = 0; i < _dynamicStringValues.size(); i++) {
-    ::dlserver::StringOption* opt = model->add_stringoptions();
+    ::dlserver::StringOption* opt = model->add_string_options();
     opt->set_name(_dynamicStringNames[i]);
     opt->set_value(_dynamicStringValues[i]);
   }
@@ -398,17 +394,20 @@ int DLClient::knob_changed(Knob* knobChanged)
       }
       else {
         _comms.sendInfoRequest();
-
-        // Read the response from the server
         dlserver::RespondWrapper resp_wrapper;
         _comms.readInfoResponse(resp_wrapper);
-
+        // Check if error occured in the server
+        if (resp_wrapper.has_error()) {
+          const char * errorMsg = resp_wrapper.error().msg().c_str();
+          error(errorMsg);
+          return 0;
+        }
         // Parse message and fill in menu items for enumeration knob
         _serverModels.clear();
         _numInputs.clear();
         _inputNames.clear();
         std::vector<std::string> modelNames;
-        int numModels = resp_wrapper.r1().nummodels();
+        int numModels = resp_wrapper.r1().num_models();
         std::cerr << "Server can serve " << std::to_string(numModels) << " models" << std::endl;
         std::cerr << "-----------------------------------------------" << std::endl;
         for (int i = 0; i < numModels; i++) {
@@ -437,7 +436,6 @@ int DLClient::knob_changed(Knob* knobChanged)
         _modelSelected = true;
         _showDynamic = true;
 
-        _firstTime = true;
         parseOptions();
         _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
       }

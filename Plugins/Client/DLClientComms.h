@@ -54,7 +54,7 @@ public:
   //! Marshalls the returned image into a float buffer of the original image size. Note, this
   //! expects the size of result to have been set to the same size as the image that was
   //! previously sent to the server.
-  bool readInferenceResponse(std::vector<float>& result);
+  bool readInferenceResponse(dlserver::RespondWrapper& resp_wrapper);
 
 private:
   // Private client / server comms functions
@@ -69,7 +69,7 @@ private:
 
   //! Helper to the above 'readInferenceResponse' function, pulls the data after
   //! determining the size 'siz' from the header.
-  bool readInferenceResponse(google::protobuf::uint32 siz, std::vector<float>& result);
+  bool readInferenceResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& resp_wrapper);
 
 private:
   // Private helper functions

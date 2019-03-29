@@ -12,6 +12,7 @@ message RespondWrapper {
 	required bool info = 1;
 	optional RespondInfo r1 = 2;
 	optional RespondInference r2 = 3;
+	optional Error error = 4;
 }
 
 message RequestInfo {
@@ -19,7 +20,7 @@ message RequestInfo {
 }
 
 message RespondInfo {
-	required int32 numModels = 1;
+	required int32 num_models = 1;
 	repeated Model models = 2;
 }
 
@@ -28,11 +29,11 @@ message Model {
 	required string label = 2;
 	repeated ImagePrototype inputs = 3;
 	repeated ImagePrototype outputs = 4;
-	repeated BoolOption boolOptions = 5;
-	repeated IntOption intOptions = 6;
-	repeated FloatOption floatOptions = 7;
-	repeated StringOption stringOptions = 8;
-	repeated MultipleChoiceOption mcOptions = 9;
+	repeated BoolOption bool_options = 5;
+	repeated IntOption int_options = 6;
+	repeated FloatOption float_options = 7;
+	repeated StringOption string_options = 8;
+	repeated MultipleChoiceOption mc_options = 9;
 }
 
 message BoolOption {
@@ -76,7 +77,7 @@ message RequestInference {
 }
 
 message RespondInference {
-	required int32 numImages = 1;
+	required int32 num_images = 1;
 	repeated Image image = 2;
 }
 
@@ -86,4 +87,3 @@ message Image {
 	required int32 channels = 3;
 	required bytes image = 4;
 }
-

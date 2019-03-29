@@ -280,7 +280,7 @@ bool DLClientComms::readInfoResponse(google::protobuf::uint32 siz, dlserver::Res
 
   resp_wrapper.set_info(true);
 
-  //Read the entire buffer
+  // Read the entire buffer
   if ((bytecount = recv(_socket, (void *)buffer, siz, 0)) == -1) {
     std::cerr << "Client -> Error receiving data " << errno << std::endl;
   }
@@ -290,6 +290,7 @@ bool DLClientComms::readInfoResponse(google::protobuf::uint32 siz, dlserver::Res
   google::protobuf::io::ArrayInputStream ais(buffer, siz);
   google::protobuf::io::CodedInputStream coded_input(&ais);
   google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
+  // Fill the message resp_wrapper with a protocol buffer parsed from coded_input
   resp_wrapper.ParseFromCodedStream(&coded_input);
   coded_input.PopLimit(msgLimit);
 
@@ -346,7 +347,7 @@ bool DLClientComms::sendInferenceRequest(dlserver::RequestInference* req_inferen
 //! Marshalls the returned image into a float buffer of the original image size. Note, this
 //! expects the size of result to have been set to the same size as the image that was
 //! previously sent to the server.
-bool DLClientComms::readInferenceResponse(std::vector<float>& result)
+bool DLClientComms::readInferenceResponse(dlserver::RespondWrapper& resp_wrapper)
 {
   int bytecount;
   
@@ -358,15 +359,14 @@ bool DLClientComms::readInferenceResponse(std::vector<float>& result)
   }
   google::protobuf::uint32 siz = readHdr(buffer_hdr);
 
-  return readInferenceResponse(siz, result);
+  return readInferenceResponse(siz, resp_wrapper);
 }
 
 //! Helper to the above 'readInferenceResponse' function, pulls the data after
 //! determining the size 'siz' from the header.
-bool DLClientComms::readInferenceResponse(google::protobuf::uint32 siz, std::vector<float>& result)
+bool DLClientComms::readInferenceResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& resp_wrapper)
 {
   vprint("Reading data of size: " + std::to_string(siz));
-  dlserver::RespondWrapper resp_wrapper;
   resp_wrapper.set_info(true);
 
   // Read the buffer
@@ -391,11 +391,6 @@ bool DLClientComms::readInferenceResponse(google::protobuf::uint32 siz, std::vec
   google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
   resp_wrapper.ParseFromCodedStream(&coded_input);
   coded_input.PopLimit(msgLimit);
-
-  const dlserver::Image &img = resp_wrapper.r2().image(0);
-
-  const char* imdata = img.image().c_str();
-  std::memcpy(&result[0], imdata, result.size() * sizeof(float));
 
   return false;
 }

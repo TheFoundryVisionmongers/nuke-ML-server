@@ -66,13 +66,14 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             return self.process_inference(message)
         else:
             self.vprint('Received unidentified request')
-            # TODO: Implement error handling
+            # Pass error message to the client
+            return self.errormsg("Server received unindentified request from client.")
 
     def process_info(self, message):
         resp_msg = RespondWrapper()
         resp_msg.info = True
         resp_info = RespondInfo()
-        resp_info.numModels = len(self.server.available_models)
+        resp_info.num_models = len(self.server.available_models)
         # Add all model info into the message
         for model in self.server.available_models:
             m = resp_info.models.add()
@@ -91,17 +92,21 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             # Add options
             for opt_name, opt_value in self.server.models[model].get_options().items():
                 if type(opt_value) == int:
-                    opt = m.intOptions.add()
+                    opt = m.int_options.add()
                 elif type(opt_value) == float:
-                    opt = m.floatOptions.add()
+                    opt = m.float_options.add()
                 elif type(opt_value) == bool:
-                    opt = m.boolOptions.add()
+                    opt = m.bool_options.add()
                 elif type(opt_value) == str:
-                    opt = m.stringOptions.add()
+                    opt = m.string_options.add()
                     # TODO: Implement multiple choice
                 else:
-                    raise NotImplementedError
-                    # TODO: Do better error handling
+                    # Send an error response message to the Nuke Client
+                    option_error = ("Model option of type {} is not implemented in the "
+                        "protobuf message (see message.proto file). "
+                        "Currently available type: int, float, bool, str."
+                    ).format(type(opt_value))
+                    return self.errormsg(option_error)
                 opt.name = opt_name
                 opt.value = opt_value
 
@@ -118,7 +123,7 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
         # Parse model options
         opt = {}
         
-        for options in [m.boolOptions, m.intOptions, m.floatOptions, m.stringOptions]:
+        for options in [m.bool_options, m.int_options, m.float_options, m.string_options]:
             for option in options:
                 opt[option.name] = option.value
 
@@ -136,32 +141,34 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             img = np.transpose(img, (1, 2, 0))
             img = np.flipud(img)
             img_list.append(img)
-
-        # Running inference
-        self.vprint('Starting inference')
-        res = self.server.models[m.name].inference(img_list)
-
-        # Creating response messsage
-        resp_msg = RespondWrapper()
-        resp_msg.info = True
-        resp_inf = RespondInference()
-        resp_inf.numImages = len(res)
-        for img in res:
-            img = np.flipud(img)
-            image = resp_inf.image.add()
-            image.width = np.shape(img)[0]
-            image.height = np.shape(img)[1]
-            image.channels = np.shape(img)[2]
-            img = np.transpose(img, (2, 0, 1))
-            image.image = img.tobytes()
-
-        # Add RespondInference message to RespondWrapper
-        resp_msg.r2.CopyFrom(resp_inf)
+        try:
+            # Running inference
+            self.vprint('Starting inference')
+            res = self.server.models[m.name].inference(img_list)
+            # Creating response messsage
+            resp_msg = RespondWrapper()
+            resp_msg.info = True
+            resp_inf = RespondInference()
+            resp_inf.num_images = len(res)
+            for img in res:
+                img = np.flipud(img)
+                image = resp_inf.image.add()
+                image.width = np.shape(img)[0]
+                image.height = np.shape(img)[1]
+                image.channels = np.shape(img)[2]
+                img = np.transpose(img, (2, 0, 1))
+                image.image = img.tobytes()
+            # Add RespondInference message to RespondWrapper
+            resp_msg.r2.CopyFrom(resp_inf)
+        except Exception as e:
+            # Pass error message to the client
+            resp_msg = self.errormsg(str(e))
 
         return resp_msg
 
     def recvall(self, n):
-        # Helper function to recv n bytes or return None if EOF is hit
+        """Helper function to recv n bytes or return None if EOF is hit
+        """
         data = b''
         while len(data) < n:
             packet = self.request.recv(n - len(data))
@@ -177,6 +184,16 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             if sent == 0:
                 raise RuntimeError("Socket connection broken")
             totalsent = totalsent + sent
+
+    def errormsg(self, error):
+        """Create an error message (to send a Server error to the Nuke Client)
+        """
+        resp_msg = RespondWrapper()
+        resp_msg.info = True
+        error_msg = Error() # from message_pb2.py
+        error_msg.msg = error
+        resp_msg.error.CopyFrom(error_msg)
+        return resp_msg
 
     def vprint(self, string):
         if self.server.verbose:
