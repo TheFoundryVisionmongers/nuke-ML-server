@@ -28,6 +28,7 @@ set_target_properties (DLClient PROPERTIES PREFIX "")
 target_include_directories(DLClient PRIVATE
     ${NUKE_INSTALL_PATH}/include
     ${CMAKE_CURRENT_BINARY_DIR} # include message.pb.h
+    ${PROTOBUF_INCLUDE_DIRS}
 )
 target_link_libraries(DLClient
     ${PROTOBUF_LIBRARY}
