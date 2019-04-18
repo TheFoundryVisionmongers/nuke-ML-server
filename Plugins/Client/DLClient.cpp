@@ -94,6 +94,18 @@ bool DLClient::renderFullPlanes() const
   return true;
 }
 
+void DLClient::_validate(bool forReal)
+{
+  // Try connect to the server, erroring if we can't connect.
+  std::string connectErrorMsg;
+  if(!tryConnect(connectErrorMsg)) {
+    error(connectErrorMsg.c_str());
+  }
+
+  // The only other thing we need to do in validate is copy our image info.
+  copy_info();
+}
+
 void DLClient::getRequests(const Box& box, const ChannelSet& channels, int count, RequestOutput &reqData) const
 {
     // request all input input as we are going to search the whole input area
@@ -187,6 +199,81 @@ void DLClient::renderOutputBuffer(ImagePlane& imagePlane)
       }
     }
   }
+}
+
+bool DLClient::tryConnect(std::string& errorMsg)
+{
+  // Before trying to connect, ensure we have valid ports and hostname.
+  if (!_portIsValid) {
+    errorMsg = "Port is invalid.";
+    return false;
+  }
+  if(!_hostIsValid) {
+    errorMsg = "Hostname is invalid.";
+    return false;
+  }
+
+  // Actually try to connect
+  _comms.connectLoop(_host, _port);
+  if (!_comms.isConnected()) {
+    //error("Could not connect to python server.");
+    errorMsg = "Could not connect to python server.";
+    return false;
+  }
+
+  // Send the request for server & model info, and parse the response.
+  _comms.sendInfoRequest();
+  dlserver::RespondWrapper resp_wrapper;
+  _comms.readInfoResponse(resp_wrapper);
+  // Check if error occured in the server
+  if (resp_wrapper.has_error()) {
+    //const char * errorMsg = resp_wrapper.error().msg().c_str();
+    //error(errorMsg);
+    errorMsg = resp_wrapper.error().msg();
+    return false;
+  }
+
+  // Parse message and fill in menu items for enumeration knob
+  _serverModels.clear();
+  _numInputs.clear();
+  _inputNames.clear();
+  std::vector<std::string> modelNames;
+  int numModels = resp_wrapper.r1().num_models();
+  std::cerr << "Server can serve " << std::to_string(numModels) << " models" << std::endl;
+  std::cerr << "-----------------------------------------------" << std::endl;
+  for (int i = 0; i < numModels; i++) {
+    dlserver::Model m;
+    m = resp_wrapper.r1().models(i);
+    modelNames.push_back(m.label());
+    _serverModels.push_back(m);
+    _numInputs.push_back(m.inputs_size());
+    std::vector<std::string> names;
+    for (int j = 0; j < m.inputs_size(); j++) {
+      dlserver::ImagePrototype p;
+      p = m.inputs(j);
+      names.push_back(p.name());
+    }
+    _inputNames.push_back(names);
+  }
+
+  // Change enumeration knob choices
+  Enumeration_KnobI* pSelectModelEnum = _selectedModelknob->enumerationKnob();
+  pSelectModelEnum->menu(modelNames);
+
+  if (_chosenModel >= (int)numModels) {
+    _selectedModelknob->set_value(0);
+  }
+
+  // Set member variables to indicate our connections and model set-up succeeded.
+  _modelSelected = true;
+  _showDynamic = true;
+
+  // Update the dynamic knobs
+  parseOptions();
+  _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
+
+  // Return true if we made it here, success.
+  return true;
 }
 
 bool DLClient::processImage(const std::string& hostStr, int port)
@@ -387,58 +474,9 @@ int DLClient::knob_changed(Knob* knobChanged)
   }
 
   if (knobChanged->is("connect")) {
-    if (_portIsValid && _hostIsValid) {
-      _comms.connectLoop(_host, _port);
-      if (!_comms.isConnected()) {
-        error("Could not connect to python server.");
-      }
-      else {
-        _comms.sendInfoRequest();
-        dlserver::RespondWrapper resp_wrapper;
-        _comms.readInfoResponse(resp_wrapper);
-        // Check if error occured in the server
-        if (resp_wrapper.has_error()) {
-          const char * errorMsg = resp_wrapper.error().msg().c_str();
-          error(errorMsg);
-          return 0;
-        }
-        // Parse message and fill in menu items for enumeration knob
-        _serverModels.clear();
-        _numInputs.clear();
-        _inputNames.clear();
-        std::vector<std::string> modelNames;
-        int numModels = resp_wrapper.r1().num_models();
-        std::cerr << "Server can serve " << std::to_string(numModels) << " models" << std::endl;
-        std::cerr << "-----------------------------------------------" << std::endl;
-        for (int i = 0; i < numModels; i++) {
-          dlserver::Model m;
-          m = resp_wrapper.r1().models(i);
-          modelNames.push_back(m.label());
-          _serverModels.push_back(m);
-          _numInputs.push_back(m.inputs_size());
-          std::vector<std::string> names;
-          for (int j = 0; j < m.inputs_size(); j++) {
-            dlserver::ImagePrototype p;
-            p = m.inputs(j);
-            names.push_back(p.name());
-          }
-          _inputNames.push_back(names);
-        }
-
-        // Change enumeration knob choices
-        Enumeration_KnobI* pSelectModelEnum = _selectedModelknob->enumerationKnob();
-        pSelectModelEnum->menu(modelNames);
-
-        if (_chosenModel >= (int)numModels) {
-          _selectedModelknob->set_value(0);
-        }
-
-        _modelSelected = true;
-        _showDynamic = true;
-
-        parseOptions();
-        _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
-      }
+    std::string connectErrorMsg;
+    if(!tryConnect(connectErrorMsg)) {
+      error(connectErrorMsg.c_str());
     }
     return 1;
   }

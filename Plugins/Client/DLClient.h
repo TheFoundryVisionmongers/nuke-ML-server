@@ -57,6 +57,8 @@ public:
 
   bool useStripes() const;
   bool renderFullPlanes() const;
+  
+  void _validate(bool);
   void getRequests(const DD::Image::Box& box, const DD::Image::ChannelSet& channels, int count, DD::Image::RequestOutput &reqData) const;
 
   // This function does all the work.
@@ -86,6 +88,10 @@ private:
   void renderOutputBuffer(DD::Image::ImagePlane& imagePlane);
 
   // Private functions for talking to the server
+  //! Try connect to the server and set-up the relevant knobs. Returns true on
+  //! success, false otherwise and setting a descriptive error in errorMsg.
+  bool tryConnect(std::string& errorMsg);
+  
   //! Connect to server, then send inference request and read inference response
   bool processImage(const std::string& hostStr, int port);
   //! Parse the model options from the DL server.
