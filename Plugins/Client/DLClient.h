@@ -1,4 +1,5 @@
 // Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
+// This is strictly non-commercial.
 
 #ifndef DLCLIENT_H
 #define DLCLIENT_H

@@ -1,4 +1,5 @@
 // Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
+// This is strictly non-commercial.
 
 // Includes for sockets and protobuf
 #include <iostream>

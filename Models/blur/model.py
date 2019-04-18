@@ -1,3 +1,6 @@
+# Copyright (c) 2019 The Foundry Visionmongers Ltd. All Rights Reserved.
+# This is strictly non-commercial.
+
 from ..baseModel import BaseModel
 
 import cv2

@@ -1,5 +1,3 @@
-# Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
-#
 # Based on:
 # Facebook vis.py file:
 # https://github.com/facebookresearch/DensePose/blob/master/detectron/utils/vis.py

@@ -31,6 +31,10 @@ Please find installation instructions in [INSTALL.md](INSTALL.md).
 
 The source code is licensed under the license found in the [LICENSE](LICENSE) file in the root directory of this source tree.
 
+Two of the models (DensePose and Mask-RCNN) have individual licenses that can be found in their respective folders.
+
+This is strictly non-commercial.
+
 ## Contact
 
 - Johanna Barbier (Johanna.Barbier@foundry.com)

@@ -1,11 +1,14 @@
 // Copyright (c) 2018 The Foundry Visionmongers Ltd.  All Rights Reserved.
+// This is strictly non-commercial.
 
 #include <cstring>
 
 #include "DLClient.h"
 
 const char* const DLClient::kClassName = "DLClient";
-const char* const DLClient::kHelpString = "Connects to a Python server for Deep Learning inference.";
+const char* const DLClient::kHelpString = 
+  "Connects to a Python server for Deep Learning inference.\n"
+  "This is strictly non-commercial.";
 
 const char* const DLClient::kDefaultHostName = "172.17.0.2";
 const int         DLClient::kDefaultPortNumber = 55555;
@@ -432,6 +435,8 @@ void DLClient::addDynamicKnobs(void* p, Knob_Callback f)
 
 void DLClient::knobs(Knob_Callback f)
 {
+  Text_knob(f, "This plugin is strictly non-commercial.");
+  Divider(f, "  ");
   String_knob(f, &_host, "host");
   Int_knob(f, &_port, "port");
   Button(f, "connect", "Connect");

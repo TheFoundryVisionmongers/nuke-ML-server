@@ -1,3 +1,6 @@
+# Copyright (c) 2018 The Foundry Visionmongers Ltd. All Rights Reserved.
+# This is strictly non-commercial.
+
 import SocketServer
 import argparse
 import os
