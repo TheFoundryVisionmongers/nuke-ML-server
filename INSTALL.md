@@ -89,7 +89,7 @@ sudo nvidia-docker run -v /absolute/path/to/nuke-DL-server/Models/:/workspace/dl
 
 Note: the `-v` (volume) options links your nuke-DL-server/Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-DL-server/Models/`, leave the `/workspace/dl-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
 
-If you get
+If you get:
 ```
 /bin/nvidia-docker: line 34: /bin/docker: Permission denied
 /bin/nvidia-docker: line 34: /bin/docker: Success
