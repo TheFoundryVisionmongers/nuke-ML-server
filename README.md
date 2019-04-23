@@ -19,7 +19,7 @@ The plug-in works as follows:
 - The Nuke node can connect to a server given an ip address and port,
 - The Python server responds with the list of available Deep Learning (DL) models and options,
 - The Nuke node displays the models in an enumeration node, from which the user can choose,
-- On every engine call, the current image and model options are sent from the Nuke node to the server,
+- On every renderStripe call, the current image and model options are sent from the Nuke node to the server,
 - The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a deep learning model, or just some other image processing code,
 - The resulting image is sent back to the Nuke node.
 
@@ -29,7 +29,7 @@ Please find installation instructions in [INSTALL.md](INSTALL.md).
 
 ## License
 
-The source code is licensed under the license found in the [LICENSE](LICENSE) file in the root directory of this source tree.
+The source code is licensed under the Apache License, Version 2.0, found in [LICENSE](LICENSE).
 
 Two of the models (DensePose and Mask-RCNN) have individual licenses that can be found in their respective folders.
 

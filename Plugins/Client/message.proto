@@ -3,87 +3,102 @@ syntax = "proto2";
 package dlserver;
 
 message RequestWrapper {
-	required bool info = 1;
+	optional bool info = 1;
 	optional RequestInfo r1 = 2;
 	optional RequestInference r2 = 3;
 }
 
 message RespondWrapper {
-	required bool info = 1;
+	optional bool info = 1;
 	optional RespondInfo r1 = 2;
 	optional RespondInference r2 = 3;
 	optional Error error = 4;
 }
 
 message RequestInfo {
-	required bool info = 1;
+	optional bool info = 1;
 }
 
 message RespondInfo {
-	required int32 num_models = 1;
+	optional int32 num_models = 1;
 	repeated Model models = 2;
 }
 
 message Model {
-	required string name = 1;
-	required string label = 2;
+	optional string name = 1;
+	optional string label = 2;
 	repeated ImagePrototype inputs = 3;
 	repeated ImagePrototype outputs = 4;
-	repeated BoolOption bool_options = 5;
-	repeated IntOption int_options = 6;
-	repeated FloatOption float_options = 7;
-	repeated StringOption string_options = 8;
-	repeated MultipleChoiceOption mc_options = 9;
-}
-
-message BoolOption {
-	required string name = 1;
-	required bool value = 2;
-}
-
-message IntOption {
-	required string name = 1;
-	required int32 value = 2;
-}
-
-message FloatOption {
-	required string name = 1;
-	required float value = 2;
-}
-
-message StringOption {
-	required string name = 1;
-	required string value = 2;
+	repeated BoolAttrib bool_options = 5;
+	repeated IntAttrib int_options = 6;
+	repeated FloatAttrib float_options = 7;
+	repeated StringAttrib string_options = 8;
+	repeated BoolAttrib button_options = 9;
+	repeated MultipleChoiceOption mc_options = 10;
 }
 
 message MultipleChoiceOption {
-	required string name = 1;
-	required string value = 2;
+	optional string name = 1;
+	optional string value = 2;
 	repeated string choices = 3;
 }
 
 message ImagePrototype {
-	required string name = 1;
-	required int32 channels = 2;
+	optional string name = 1;
+	optional int32 channels = 2;
 }
 
 message Error {
-	required string msg = 1;
+	optional string msg = 1;
 }
 
 message RequestInference {
-	required Model model = 1;
-	repeated Image image = 2;
+	optional Model model = 1;
+	repeated Image images = 2;
 }
 
 message RespondInference {
-	required int32 num_images = 1;
-	repeated Image image = 2;
+	optional int32 num_images = 1;
+	repeated Image images = 2;
+	optional int32 num_objects = 3;
+	repeated FieldValuePairAttrib objects = 4;
 }
 
 message Image {
-	required int32 width = 1;
-	required int32 height = 2;
-	required int32 channels = 3;
-	required bytes image = 4;
+	optional int32 width = 1;
+	optional int32 height = 2;
+	optional int32 channels = 3;
+	optional bytes image = 4;
+}
+
+message BoolAttrib {
+	optional string name = 1;
+	repeated bool values = 2 [packed=true];
+}
+
+message IntAttrib {
+	optional string name = 1;
+	repeated int32 values = 2 [packed=true];
+}
+
+message FloatAttrib {
+	optional string name = 1;
+	repeated float values = 2 [packed=true];
+}
+
+message StringAttrib {
+	optional string name = 1;
+	repeated string values = 2;
+}
+
+message FieldValuePairAttrib {
+	optional string name = 1;
+	repeated FieldValuePair values = 2;
+}
+
+message FieldValuePair {
+	repeated IntAttrib int_attributes = 1;
+	repeated FloatAttrib float_attributes = 2;
+	repeated StringAttrib string_attributes = 3;
+	repeated FieldValuePairAttrib children = 4;
 }

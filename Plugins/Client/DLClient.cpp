@@ -13,7 +13,8 @@ const char* const DLClient::kHelpString =
 const char* const DLClient::kDefaultHostName = "172.17.0.2";
 const int         DLClient::kDefaultPortNumber = 55555;
 
-const int DLClient::kDefaultNumberOfChannels = 3;
+const DD::Image::ChannelSet DLClient::kDefaultChannels = DD::Image::Mask_RGB;
+const int DLClient::kDefaultNumberOfChannels = DLClient::kDefaultChannels.size();
 
 using namespace DD::Image;
 
@@ -49,7 +50,7 @@ DLClient::~DLClient() {}
 //! The maximum number of input connections the operator can have.
 int DLClient::maximum_inputs() const
 {
-  if (_modelSelected) {
+  if (haveValidModelInfo() && _modelSelected) {
     return _numInputs[_chosenModel];
   }
   else {
@@ -60,7 +61,7 @@ int DLClient::maximum_inputs() const
 //! The minimum number of input connections the operator can have.
 int DLClient::minimum_inputs() const
 { 
-  if (_modelSelected) {
+  if (haveValidModelInfo() && _modelSelected) {
     return _numInputs[_chosenModel];
   }
   else {
@@ -74,7 +75,7 @@ int DLClient::minimum_inputs() const
 */
 const char* DLClient::input_label(int input, char* buffer) const
 {
-  if (!_modelSelected) {
+  if (!haveValidModelInfo() || !_modelSelected) {
     return "";
   }
   else {
@@ -97,21 +98,25 @@ bool DLClient::renderFullPlanes() const
   return true;
 }
 
+DLClientModelManager& DLClient::getModelManager()
+{
+  return _modelManager;
+}
+
 void DLClient::_validate(bool forReal)
 {
-  // Try connect to the server, erroring if we can't connect.
+  // Try connect to the server, erroring if it can't connect.
   std::string connectErrorMsg;
-  if(!tryConnect(connectErrorMsg)) {
+  if(!haveValidModelInfo() && !refreshModelsAndKnobsFromServer(connectErrorMsg)) {
     error(connectErrorMsg.c_str());
   }
-
-  // The only other thing we need to do in validate is copy our image info.
+  // The only other thing needed to do in validate is copy the image info.
   copy_info();
 }
 
 void DLClient::getRequests(const Box& box, const ChannelSet& channels, int count, RequestOutput &reqData) const
 {
-    // request all input input as we are going to search the whole input area
+  // request all input input as we are going to search the whole input area
   for (int i = 0, endI = getInputs().size(); i < endI; i++) {
     const ChannelSet readChannels = input(i)->info().channels();
     input(i)->request(readChannels, count);
@@ -120,93 +125,62 @@ void DLClient::getRequests(const Box& box, const ChannelSet& channels, int count
 
 void DLClient::renderStripe(ImagePlane& imagePlane)
 {
+  // Before doing any rendering, check if we've aborted.
+  // Note that it's perfectly fine to abort here, it usually
+  // means the user has scrubbed quickly around on the timeline
+  // or switched between Viewers.
   if (aborted() || cancelled()) {
+    // The following print is commented out as it happens too frequently
+    // DLClientComms::Vprint("Aborted before processing images.");
     return;
   }
+
+  // Check that it's connected and set up correctly
+  if (haveValidModelInfo() && _modelSelected) {
+    // Set up our error string
+    std::string errorMsg;
+    // Set up our incoming response message structure.
+    dlserver::RespondWrapper responseWrapper;
+    // Wrap up our image data to be sent, send it, and
+    // retrieve the response.
+    if(!processImage(_host, _port, responseWrapper, errorMsg)) {
+      // Test if the failure was due to Nuke aborting
+      if (aborted() || cancelled()) {
+        // errorMsg should be filled with where / when the
+        // processImage() call was aborted.
+        DLClientComms::Vprint(errorMsg);
+        return;
+      }
+      // Display the error in Nuke if it was some systematic issue.
+      error(errorMsg.c_str());
+      return;
+    }
+    // If control reached here then responseWrapper contains a valid
+    // response, so let's try to extract an image from it and
+    // place it into our imagePlane.
+    if (!renderOutputBuffer(responseWrapper, imagePlane, errorMsg)) {
+      DLClientComms::Vprint(errorMsg);
+      error(errorMsg.c_str());
+      return;
+    }
+    // If control reached here, it's all good, return.
+    return;
+  }
+
+  // Check again if we hit abort during processing
+  if (aborted() || cancelled()) {
+    DLClientComms::Vprint("Aborted without processing image.");
+    return;
+  }
+
+  // If we reached here by default let's pull an image from input0() so
+  // that it's at least passing something through.
   input0().fetchPlane(imagePlane);
-  imagePlane.makeUnique();
-
-  initBuffers(imagePlane);
-  if (_comms.isConnected() && _modelSelected) {
-    processImage(_host, _port);
-  }
-  renderOutputBuffer(imagePlane);
 }
 
-void DLClient::initBuffers(ImagePlane& imagePlane)
+bool DLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
 {
-  const Box box = imagePlane.bounds();
-  const int numberOfInputs = getInputs().size();
-  _inputs.resize(numberOfInputs);
-  _w.resize(numberOfInputs);
-  _h.resize(numberOfInputs);
-  _c.resize(numberOfInputs);
-  _result.resize(box.w() * box.h() * kDefaultNumberOfChannels);
-  initInputs(imagePlane);
-}
-
-void DLClient::initInputs(ImagePlane &imagePlane)
-{
-  for (int i = 0, endI = getInputs().size(); i < endI; i++) {
-    initInput(i, imagePlane);
-  }
-}
-
-void DLClient::initInput(int i, ImagePlane &imagePlane)
-{
-  const Box box = imagePlane.bounds();
-  const int fx = box.x();
-  const int fy = box.y();
-  const int fr = box.r();
-  const int ft = box.t();
-
-  _inputs[i].resize(box.w() * box.h() * kDefaultNumberOfChannels);
-  _w[i] = fr;
-  _h[i] = ft;
-  float* fullImagePtr = &_inputs[i][0];
-
-  for (int z = 0; z < kDefaultNumberOfChannels; z++) {
-    for(int ry = fy; ry < ft; ry++) {
-      progressFraction(ry, ft - fy);
-      if (aborted()) {
-        return;
-      }
-      ImageTileReadOnlyPtr tile = imagePlane.readableAt(ry, z);
-      int currentPos = 0;
-      for(int rx = fx; rx < fr; rx++) {
-        int fullPos = z * fr * ft + ry * fr + currentPos++;
-        fullImagePtr[fullPos] = tile[rx];
-      }
-    }
-  }
-}
-
-void DLClient::renderOutputBuffer(ImagePlane& imagePlane)
-{
-  const Box box = imagePlane.bounds();
-  const int fx = box.x();
-  const int fy = box.y();
-  const int fr = box.r();
-  const int ft = box.t();
-
-  float* fullImagePtr = &_result[0];
-  for (int z = 0; z < kDefaultNumberOfChannels; z++) {
-    for(int ry = fy; ry < ft; ry++) {
-      if (aborted()) {
-        return;
-      }
-      int currentPos = 0;
-      for(int rx = fx; rx < fr; rx++) {
-        int fullPos = z * fr * ft + ry * fr + currentPos++;
-        imagePlane.writableAt(rx, ry, z)  = fullImagePtr[fullPos];
-      }
-    }
-  }
-}
-
-bool DLClient::tryConnect(std::string& errorMsg)
-{
-  // Before trying to connect, ensure we have valid ports and hostname.
+  // Before trying to connect, ensure ports and hostname are valid.
   if (!_portIsValid) {
     errorMsg = "Port is invalid.";
     return false;
@@ -216,24 +190,23 @@ bool DLClient::tryConnect(std::string& errorMsg)
     return false;
   }
 
-  // Actually try to connect
-  _comms.connectLoop(_host, _port);
-  if (!_comms.isConnected()) {
-    //error("Could not connect to python server.");
-    errorMsg = "Could not connect to python server.";
-    return false;
-  }
+  // Actually try to connect, and pull model info
+  dlserver::RespondWrapper responseWrapper;
+  {
+    // Local scope our comms object so that the connection is torn
+    // down after we have our data.
+    DLClientComms comms(_host, _port);
 
-  // Send the request for server & model info, and parse the response.
-  _comms.sendInfoRequest();
-  dlserver::RespondWrapper resp_wrapper;
-  _comms.readInfoResponse(resp_wrapper);
-  // Check if error occured in the server
-  if (resp_wrapper.has_error()) {
-    //const char * errorMsg = resp_wrapper.error().msg().c_str();
-    //error(errorMsg);
-    errorMsg = resp_wrapper.error().msg();
-    return false;
+    if (!comms.isConnected()) {
+      errorMsg = "Could not connect to server.";
+      return false;
+    }
+
+    // Try pull the model info into the responseWrapper
+    if(!comms.sendInfoRequestAndReadInfoResponse(responseWrapper, errorMsg)) {
+      // If it failed, the error is set, return.
+      return false;
+    }
   }
 
   // Parse message and fill in menu items for enumeration knob
@@ -241,12 +214,14 @@ bool DLClient::tryConnect(std::string& errorMsg)
   _numInputs.clear();
   _inputNames.clear();
   std::vector<std::string> modelNames;
-  int numModels = resp_wrapper.r1().num_models();
-  std::cerr << "Server can serve " << std::to_string(numModels) << " models" << std::endl;
-  std::cerr << "-----------------------------------------------" << std::endl;
+  int numModels = responseWrapper.r1().num_models();
+  std::stringstream ss;
+  ss << "Server can serve " << std::to_string(numModels) << " models" << std::endl;
+  ss << "-----------------------------------------------";
+  DLClientComms::Vprint(ss.str());
   for (int i = 0; i < numModels; i++) {
     dlserver::Model m;
-    m = resp_wrapper.r1().models(i);
+    m = responseWrapper.r1().models(i);
     modelNames.push_back(m.label());
     _serverModels.push_back(m);
     _numInputs.push_back(m.inputs_size());
@@ -257,6 +232,12 @@ bool DLClient::tryConnect(std::string& errorMsg)
       names.push_back(p.name());
     }
     _inputNames.push_back(names);
+  }
+
+  // Sanity check that some models were returned
+  if (_serverModels.size() == 0) {
+    errorMsg = "Server returned no models.";
+    return false;
   }
 
   // Change enumeration knob choices
@@ -272,162 +253,284 @@ bool DLClient::tryConnect(std::string& errorMsg)
   _showDynamic = true;
 
   // Update the dynamic knobs
-  parseOptions();
+  const dlserver::Model m = _serverModels[_chosenModel];
+  _modelManager.parseOptions(m);
   _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
 
-  // Return true if we made it here, success.
+  // Return true if control made it here, success.
   return true;
 }
 
-bool DLClient::processImage(const std::string& hostStr, int port)
+//! Return whether we successfully managed to pull model
+//! info from the server at some time in the past, and the selected model is
+//! valid.
+bool DLClient::haveValidModelInfo() const
 {
+  return _serverModels.size() > 0 && _serverModels.size() > _chosenModel;
+}
+
+bool DLClient::processImage(const std::string& hostStr, int port,
+  dlserver::RespondWrapper& responseWrapper, std::string& errorMsg)
+{
+  // Check if Nuke has aborted, making it impossible to pull images.
+  if (aborted()) {
+    errorMsg = "Process aborted at beginning of processing images.";
+    return false;
+  }
+
   try {
-    _comms.connectLoop(hostStr, port);
-    if (!_comms.isConnected()) {
-      error("Could not connect to python server.");
+
+    // Sanity check that some models exist and a valid one is selected.
+    if (!haveValidModelInfo()) {
+      errorMsg = "No models exist to send to server.";
+      return false;
     }
-    std::cerr << "Sending inference request for model \"" << _serverModels[_chosenModel].name() << "\"" << std::endl;
+
+    // Checking again after connection is made, just in case.
+    if (aborted()) {
+      errorMsg = "Process aborted after connection.";
+      return false;
+    }
+
+    // Validate ourself before proceeding, this ensures if this is being invoked by a button press
+    // then it's set up correctly.
+    if( !tryValidate(/*for_real*/true) ) {
+      errorMsg = "Could not set-up node correctly.";
+      return false;
+    }
+
+    // And again after validate
+    if (aborted()) {
+      errorMsg = "Process aborted after validating self.";
+      return false;
+    }
+
+    // Set our format box, this is the dimension of the
+    // image that will be passed to the server.
+    const Box imageFormat = info().format();
 
     // Create inference message
-    dlserver::RequestInference* req_inference = new dlserver::RequestInference;
+    dlserver::RequestInference* requestInference = new dlserver::RequestInference;
     dlserver::Model* m = new dlserver::Model(_serverModels[_chosenModel]);
-    updateOptions(m);
-    req_inference->set_allocated_model(m);
+    _modelManager.updateOptions(*m);
+    requestInference->set_allocated_model(m);
 
     // Parse image. TODO: Check for multiple inputs, different channel size
-    for (int i = 0; i < getInputs().size(); i++) {
-      dlserver::Image* image = req_inference->add_image();
-      image->set_width(_w[i]);
-      image->set_height(_h[i]);
-      image->set_channels(3);
+    for (int i = 0; i < node_inputs(); i++) {
+      // Create an ImagePlane, and read each input into it.
+      // Get our input & sanity check
+      DD::Image::Iop* inputIop = dynamic_cast<DD::Image::Iop*>( input(i) );
+      if ( inputIop == NULL ) {
+        errorMsg = "Input is empty or not connected.";
+        return false;
+      }
 
-      int size = _inputs[i].size() * sizeof(float);
-      byte* bytes = new byte[size];
-      std::memcpy(bytes, _inputs[i].data(), size);
-      image->set_image(bytes, size);
-      delete[] bytes;
+      // Checking before validating inputs
+      if (aborted()) {
+        errorMsg = "Process aborted before validating inputs.";
+        return false;
+      }
+
+      // Try validate & request the input, this should be quick if the data
+      // has already been requested.
+      if(!inputIop->tryValidate(/*force*/true) ) {
+        errorMsg = "Unable to validate input.";
+        return false;
+      }
+
+      // Set our input bounding box, this is what our inputs can give us.
+      Box imageBounds = inputIop->info();
+      // We're going to clip it to our format.
+      imageBounds.intersect(imageFormat);
+      const int fx = imageBounds.x();
+      const int fy = imageBounds.y();
+      const int fr = imageBounds.r();
+      const int ft = imageBounds.t();
+
+      // Request our default channels, for our own bounding box
+      inputIop->request(fx, fy, fr, ft, kDefaultChannels, 0);
+      // Let's assume everything went fine, and fetch our plane
+      ImagePlane plane(imageBounds, /*packed*/ true, kDefaultChannels, kDefaultNumberOfChannels);
+      inputIop->fetchPlane(plane);
+
+      // Sanity check that that the plane was filled successfully, and nothing
+      // was interrupted.
+      if (plane.usage() == 0) {
+        errorMsg = "No image data fetched from input.";
+        return false;
+      }
+
+      // Checking after fetching inputs
+      if (aborted()) {
+        errorMsg = "Process aborted after fetching inputs.";
+        return false;
+      }
+
+      // Set up our message
+      dlserver::Image* image = requestInference->add_images();
+      image->set_width(imageFormat.w());
+      image->set_height(imageFormat.h());
+      image->set_channels(kDefaultNumberOfChannels);
+
+      // Set up our temp contiguous buffer
+      size_t byteBufferSize = imageFormat.w() * imageFormat.h() * kDefaultNumberOfChannels * sizeof(float);
+      if (byteBufferSize == 0) {
+        errorMsg = "Image size is zero.";
+        return false;
+      }
+      // Create and zero our buffer
+      byte* byteBuffer = new byte[byteBufferSize];
+      std::memset(byteBuffer, 0, byteBufferSize);
+
+      // Copy the data from our image plane to the buffer. Ideally
+      // this should be done directly on the plane's data but it
+      // can't guarantee that it's contiguous, or packed in the
+      // expected way.
+      float* floatBuffer = (float*)byteBuffer;
+      for (int z = 0; z < kDefaultNumberOfChannels; z++) {
+        const int chanStride = z * imageFormat.w() * imageFormat.h();
+
+        for(int ry = fy; ry < ft; ry++) {
+          const int rowStride = ry * imageFormat.w();
+
+          ImageTileReadOnlyPtr tile = plane.readableAt(ry, z);
+          for(int rx = fx, currentPos = 0; rx < fr; rx++) {
+            size_t fullPos = chanStride + rowStride + currentPos++;
+            floatBuffer[fullPos] = tile[rx];
+          }
+        }
+      }
+
+      // Set the image data on our message, and release the temp buffer.
+      image->set_image(byteBuffer, byteBufferSize);
+      delete[] byteBuffer;
     }
 
-    _comms.sendInferenceRequest(req_inference);
-    dlserver::RespondWrapper resp_wrapper;
-    _comms.readInferenceResponse(resp_wrapper);
-    // Check if error occured in the server
-    if (resp_wrapper.has_error()) {
-      const char * errorMsg = resp_wrapper.error().msg().c_str();
-      error(errorMsg);
+    // Send the inference request, await and process the response.
+    {
+      // Local scope our comms object so that the connection is torn
+      // down after we have our data.
+      DLClientComms comms(_host, _port);
+
+      if (!comms.isConnected()) {
+        errorMsg = "Could not connect to server.";
+        return false;
+      }
+      // Try pull the model info into the responseWrapper
+      if(!comms.sendInferenceRequestAndReadInferenceResponse(*requestInference, responseWrapper, errorMsg)) {
+        // If it failed, the error is set, return.
+        return false;
+      }
     }
-    // Get the resulting image data
-    const dlserver::Image &img = resp_wrapper.r2().image(0);
-    const char* imdata = img.image().c_str();
-    std::memcpy(&_result[0], imdata, _result.size() * sizeof(float));
   }
   catch (...) {
-    std::cerr << "Client -> Error receiving message" << std::endl;
+    errorMsg = "Error processing messages.";
+    DLClientComms::Vprint(errorMsg);
+    return false;
   }
-  return 0;
+
+  // Return true to indicate success
+  return true;
 }
 
-void DLClient::parseOptions()
+bool DLClient::renderOutputBuffer(dlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg)
 {
-  dlserver::Model m = _serverModels[_chosenModel];
-  _dynamicBoolValues.clear();
-  _dynamicIntValues.clear();
-  _dynamicFloatValues.clear();
-  _dynamicStringValues.clear();
+  // Sanity check, make sure the response actually contains an image.
+  if(!responseWrapper.has_r2() || responseWrapper.r2().num_images() == 0) {
+    errorMsg = "No image found in message response.";
+    return false;
+  }
 
-  _dynamicBoolNames.clear();
-  _dynamicIntNames.clear();
-  _dynamicFloatNames.clear();
-  _dynamicStringNames.clear();
+  // Validate ourself before proceeding, this ensures if this is being invoked by a button press
+  // then it's set up correctly. This will return immediately if it's already set up.
+  if( !tryValidate(/*for_real*/true) ) {
+    errorMsg = "Could not set-up node correctly.";
+    return false;
+  }
 
-  for (int i = 0, endI = m.bool_options_size(); i < endI; i++) {
-    dlserver::BoolOption o;
-    o = m.bool_options(i);
-    if (o.value()) {
-      _dynamicBoolValues.push_back(1);
+  // Get the resulting image data
+  const dlserver::Image &imageMessage = responseWrapper.r2().images(0);
+
+  // Verify that the image passed back to us is of the same format as the input
+  // format (note, the bounds of the imagePlane may be different, e.g. if there's
+  // a Crop on the input.)
+  const Box imageFormat = info().format();
+  if(imageMessage.width() != imageFormat.w() || imageMessage.height() != imageFormat.h()) {
+    errorMsg = "Received Image has dimensions different than expected";
+    return false;
+  }
+
+  // Set the dimensions of the imagePlane, note this can be different than the format.
+  // Clip it to the intersection of the image format.
+  Box imageBounds = imagePlane.bounds();
+  imageBounds.intersect(imageFormat);
+  const int fx = imageBounds.x();
+  const int fy = imageBounds.y();
+  const int fr = imageBounds.r();
+  const int ft = imageBounds.t();
+
+  // This is going to copy back the minimum intersection of channels between
+  // what's required to fill in imagePlane, and what's been returned
+  // in the response. This allows us to gracefully handle cases where the returned
+  // image has too few channels, or when the imagePlane has too many.
+  const size_t numChannelsToCopy =  (imageMessage.channels() < imagePlane.channels().size()) ? imageMessage.channels() : imagePlane.channels().size();
+
+  // Allow the imagePlane to be writable
+  imagePlane.makeWritable();
+
+  // Copy the data
+  const char* imageByteDataPtr = imageMessage.image().c_str();
+
+  float* imageFloatDataPtr = (float*)imageByteDataPtr;
+  for (int z = 0; z < numChannelsToCopy; z++) {
+    const int chanStride = z * imageFormat.w() * imageFormat.h();
+
+    for(int ry = fy; ry < ft; ry++) {
+      const int rowStride = ry * imageFormat.w();
+
+      for(int rx = fx, currentPos = 0; rx < fr; rx++) {
+        int fullPos = chanStride + rowStride + currentPos++;
+        imagePlane.writableAt(rx, ry, z)  = imageFloatDataPtr[fullPos];
+      }
     }
-    else {
-      _dynamicBoolValues.push_back(0);
-    }
-    _dynamicBoolNames.push_back(o.name());
-  }
-  for (int i = 0, endI = m.int_options_size(); i < endI; i++) {
-    dlserver::IntOption o;
-    o = m.int_options(i);
-    _dynamicIntValues.push_back(o.value());
-    _dynamicIntNames.push_back(o.name());
-  }
-  for (int i = 0, endI = m.float_options_size(); i < endI; i++) {
-    dlserver::FloatOption o;
-    o = m.float_options(i);
-    _dynamicFloatValues.push_back(o.value());
-    _dynamicFloatNames.push_back(o.name());
-  }
-  for (int i = 0, endI = m.string_options_size(); i < endI; i++) {
-    dlserver::StringOption o;
-    o = m.string_options(i);
-    _dynamicStringValues.push_back(o.value());
-    _dynamicStringNames.push_back(o.name());
-  }
-}
-
-void DLClient::updateOptions(dlserver::Model* model)
-{
-  model->clear_bool_options();
-  for (int i = 0; i < _dynamicBoolValues.size(); i++) {
-    ::dlserver::BoolOption* opt = model->add_bool_options();
-    opt->set_name(_dynamicBoolNames[i]);
-    opt->set_value(_dynamicBoolValues[i]);
   }
 
-  model->clear_int_options();
-  for (int i = 0; i < _dynamicIntValues.size(); i++) {
-    ::dlserver::IntOption* opt = model->add_int_options();
-    opt->set_name(_dynamicIntNames[i]);
-    opt->set_value(_dynamicIntValues[i]);
-  }
-
-  model->clear_float_options();
-  for (int i = 0; i < _dynamicFloatValues.size(); i++) {
-    ::dlserver::FloatOption* opt = model->add_float_options();
-    opt->set_name(_dynamicFloatNames[i]);
-    opt->set_value(_dynamicFloatValues[i]);
-  }
-
-  model->clear_string_options();
-  for (int i = 0; i < _dynamicStringValues.size(); i++) {
-    ::dlserver::StringOption* opt = model->add_string_options();
-    opt->set_name(_dynamicStringNames[i]);
-    opt->set_value(_dynamicStringValues[i]);
-  }
+  // If this is reached here, return true for success
+  return true;
 }
 
 void DLClient::addDynamicKnobs(void* p, Knob_Callback f)
 {
   if (((DLClient *)p)->getShowDynamic()) {
-    for (int i = 0; i < ((DLClient *)p)->getNumOfInts(); i++) {
-      std::string name = ((DLClient *)p)->getDynamicIntName(i);
-      std::string label = ((DLClient *)p)->getDynamicIntName(i);
-      Int_knob(f, ((DLClient *)p)->getDynamicIntValue(i), name.c_str(), label.c_str());
+    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfInts(); i++) {
+      std::string name = ((DLClient *)p)->getModelManager().getDynamicIntName(i);
+      std::string label = ((DLClient *)p)->getModelManager().getDynamicIntName(i);
+      Int_knob(f, ((DLClient *)p)->getModelManager().getDynamicIntValue(i), name.c_str(), label.c_str());
       Newline(f, " ");
     }
-    for (int i = 0; i < ((DLClient *)p)->getNumOfFloats(); i++) {
-      std::string name = ((DLClient *)p)->getDynamicFloatName(i);
-      std::string label = ((DLClient *)p)->getDynamicFloatName(i);
-      Float_knob(f, ((DLClient *)p)->getDynamicFloatValue(i), name.c_str(), label.c_str());
+    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfFloats(); i++) {
+      std::string name = ((DLClient *)p)->getModelManager().getDynamicFloatName(i);
+      std::string label = ((DLClient *)p)->getModelManager().getDynamicFloatName(i);
+      Float_knob(f, ((DLClient *)p)->getModelManager().getDynamicFloatValue(i), name.c_str(), label.c_str());
       ClearFlags(f, Knob::SLIDER);
       Newline(f, " ");
     }
-    for (int i = 0; i < ((DLClient *)p)->getNumOfBools(); i++) {
-      std::string name = ((DLClient *)p)->getDynamicBoolName(i);
-      std::string label = ((DLClient *)p)->getDynamicBoolName(i);
-      Bool_knob(f, ((DLClient *)p)->getDynamicBoolValue(i), name.c_str(), label.c_str());
+    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfBools(); i++) {
+      std::string name = ((DLClient *)p)->getModelManager().getDynamicBoolName(i);
+      std::string label = ((DLClient *)p)->getModelManager().getDynamicBoolName(i);
+      Bool_knob(f, ((DLClient *)p)->getModelManager().getDynamicBoolValue(i), name.c_str(), label.c_str());
       Newline(f, " ");
     }
-    for (int i = 0; i < ((DLClient *)p)->getNumOfStrings(); i++) {
-      std::string name = ((DLClient *)p)->getDynamicStringName(i);
-      std::string label = ((DLClient *)p)->getDynamicStringName(i);
-      String_knob(f, ((DLClient *)p)->getDynamicStringValue(i), name.c_str(), label.c_str());
+    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfStrings(); i++) {
+      std::string name = ((DLClient *)p)->getModelManager().getDynamicStringName(i);
+      std::string label = ((DLClient *)p)->getModelManager().getDynamicStringName(i);
+      String_knob(f, ((DLClient *)p)->getModelManager().getDynamicStringValue(i), name.c_str(), label.c_str());
+      Newline(f, " ");
+    }
+    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfButtons(); i++) {
+      std::string name = ((DLClient *)p)->getModelManager().getDynamicButtonName(i);
+      std::string label = ((DLClient *)p)->getModelManager().getDynamicButtonName(i);
+      Button(f, name.c_str(), label.c_str());
       Newline(f, " ");
     }
   }
@@ -457,7 +560,7 @@ void DLClient::knobs(Knob_Callback f)
 int DLClient::knob_changed(Knob* knobChanged)
 {
   if (knobChanged->is("host")) {
-    if (!_comms.validateHostName(_host)) {
+    if (!DLClientComms::ValidateHostName(_host)) {
       error("Please insert a valid host ipv4 or ipv6 address.");
       _hostIsValid = false;
     }
@@ -480,16 +583,59 @@ int DLClient::knob_changed(Knob* knobChanged)
 
   if (knobChanged->is("connect")) {
     std::string connectErrorMsg;
-    if(!tryConnect(connectErrorMsg)) {
+    if(!refreshModelsAndKnobsFromServer(connectErrorMsg)) {
       error(connectErrorMsg.c_str());
     }
     return 1;
   }
 
   if (knobChanged->is("models")) {
-    parseOptions();
-    _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
+    // Sanity check that some models exist
+    if(haveValidModelInfo()) {
+      const dlserver::Model m = _serverModels[_chosenModel];
+      _modelManager.parseOptions(m);
+      _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
+    }
     return 1;
+  }
+
+  // Check if dynamic button is pressed
+  for (int i = 0; i < getModelManager().getNumOfButtons(); i++) {
+    if(knobChanged->is(getModelManager().getDynamicButtonName(i).c_str())){
+      // Set current button to true (pressed) for model inference
+      getModelManager().setDynamicButtonValue(i, 1);
+      // Set up our error string
+      std::string errorMsg;
+      // Set up our incoming response message structure.
+      dlserver::RespondWrapper responseWrapper;
+      // Wrap up our image data to be sent, send it, and
+      // retrieve the response.
+      if(!processImage(_host, _port, responseWrapper, errorMsg)) {
+        error(errorMsg.c_str());
+      }
+
+      // Get the resulting general data
+      if (responseWrapper.has_r2() && responseWrapper.r2().num_objects() > 0) {
+        const dlserver::FieldValuePairAttrib object = responseWrapper.r2().objects(0);
+        // Run script in Nuke if object called PythonScript is created
+        if (object.name() == "PythonScript") {
+          // Check object has string_attributes
+          if (object.values_size() != 0
+            && object.values(0).string_attributes_size() != 0) {
+            dlserver::StringAttrib pythonScript = object.values(0).string_attributes(0);
+            // Run Python Script in Nuke
+            if (pythonScript.values_size() != 0) {
+              std::cout << " cmd=\n" << pythonScript.values(0) << "\n" << std::flush;
+              script_command(pythonScript.values(0).c_str(), true, false);
+              script_unlock();
+            }
+          }
+        }
+        // Set current button to false (unpressed)
+        getModelManager().setDynamicButtonValue(i, 0);
+      }
+      return 1;
+    }
   }
   return 0;
 }
@@ -504,68 +650,8 @@ const char* DLClient::node_help() const
 { 
   return DLClient::kHelpString;
 }
-  
-int DLClient::getNumOfFloats() const
-{ 
-  return _dynamicFloatValues.size();
-}
-
-int DLClient::getNumOfInts() const
-{ 
-  return _dynamicIntValues.size();
-}
-
-int DLClient::getNumOfBools() const
-{ 
-  return _dynamicBoolValues.size();
-}
-
-int DLClient::getNumOfStrings() const
-{ 
-  return _dynamicStringValues.size();
-}
-
-std::string DLClient::getDynamicBoolName(int idx)
-{ 
-  return _dynamicBoolNames[idx];
-}
-
-std::string DLClient::getDynamicFloatName(int idx)
-{ 
-  return _dynamicFloatNames[idx];
-}
-
-std::string DLClient::getDynamicIntName(int idx)
-{ 
-  return _dynamicIntNames[idx];
-}
-
-std::string DLClient::getDynamicStringName(int idx)
-{ 
-  return _dynamicStringNames[idx];
-}
-
-float* DLClient::getDynamicFloatValue(int idx)
-{ 
-  return &_dynamicFloatValues[idx];
-}
-
-int* DLClient::getDynamicIntValue(int idx)
-{ 
-  return &_dynamicIntValues[idx];
-}
-
-bool* DLClient::getDynamicBoolValue(int idx)
-{ 
-  return (bool* )&_dynamicBoolValues[idx];
-}
-
-std::string* DLClient::getDynamicStringValue(int idx)
-{ 
-  return &_dynamicStringValues[idx];
-}
 
 bool DLClient::getShowDynamic() const
 { 
-  return _showDynamic && _comms.isConnected();
+  return _showDynamic && haveValidModelInfo();
 }

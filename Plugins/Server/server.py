@@ -27,9 +27,7 @@ class DLTCPServer(SocketServer.TCPServer):
         return
 
 class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
-    """
-    This request handler is instantiated once per connection.
-    """
+    """This request handler is instantiated once per connection."""
 
     def handle(self):
         # Read the data headers
@@ -49,7 +47,7 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
         # Process message
         resp_msg = self.process_message(req_msg)
 
-        # Serializing response
+        # Serialize response
         self.vprint('Serializing message')
         s = resp_msg.SerializeToString()
         msg_len = resp_msg.ByteSize()
@@ -68,9 +66,8 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             self.vprint('Received inference request')
             return self.process_inference(message)
         else:
-            self.vprint('Received unidentified request')
             # Pass error message to the client
-            return self.errormsg("Server received unindentified request from client.")
+            return self.errormsg("Server received unindentified request from client.")            
 
     def process_info(self, message):
         resp_msg = RespondWrapper()
@@ -105,13 +102,20 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
                     # TODO: Implement multiple choice
                 else:
                     # Send an error response message to the Nuke Client
-                    option_error = ("Model option of type {} is not implemented in the "
-                        "protobuf message (see message.proto file). "
-                        "Currently available type: int, float, bool, str."
+                    option_error = ("Model option of type {} is not implemented. "
+                        "Broadcasted options need to be one of bool, int, float, str."
                     ).format(type(opt_value))
                     return self.errormsg(option_error)
                 opt.name = opt_name
-                opt.value = opt_value
+                opt.values.extend([opt_value])
+            # Add buttons
+            for button_name, button_value in self.server.models[model].get_buttons().items():
+                if type (button_value) == bool:
+                    button = m.button_options.add()
+                else:
+                    return self.errormsg("Model button needs to be of type bool.")
+                button.name = button_name
+                button.values.extend([button_value])
 
         # Add RespondInfo message to RespondWrapper
         resp_msg.r1.CopyFrom(resp_info)
@@ -125,17 +129,20 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
 
         # Parse model options
         opt = {}
-        
         for options in [m.bool_options, m.int_options, m.float_options, m.string_options]:
             for option in options:
-                opt[option.name] = option.value
-
+                opt[option.name] = option.values[0]
         # Set model options
         self.server.models[m.name].set_options(opt)
+        # Parse model buttons
+        btn = {}
+        for button in m.button_options:
+            btn[button.name] = button.values[0]       
+        self.server.models[m.name].set_buttons(btn)
 
         # Parse images
         img_list = []
-        for byte_img in req.image:
+        for byte_img in req.images:
             img = np.fromstring(byte_img.image, dtype='<f4')     
             height = byte_img.height
             width = byte_img.width
@@ -152,26 +159,43 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             resp_msg = RespondWrapper()
             resp_msg.info = True
             resp_inf = RespondInference()
-            resp_inf.num_images = len(res)
-            for img in res:
-                img = np.flipud(img)
-                image = resp_inf.image.add()
-                image.width = np.shape(img)[0]
-                image.height = np.shape(img)[1]
-                image.channels = np.shape(img)[2]
-                img = np.transpose(img, (2, 0, 1))
-                image.image = img.tobytes()
+            num_images = 0
+            num_objects = 0
+            for obj in res:
+                # Send an image back to Nuke
+                if isinstance(obj, np.ndarray):
+                    num_images += 1
+                    img = np.flipud(obj)
+                    image = resp_inf.images.add()
+                    image.width = np.shape(img)[1]
+                    image.height = np.shape(img)[0]
+                    image.channels = np.shape(img)[2]
+                    img = np.transpose(img, (2, 0, 1))
+                    image.image = img.tobytes()
+                # Send a general object back to Nuke
+                elif isinstance(obj, FieldValuePairAttrib):
+                    num_objects += 1
+                    resp_inf.objects.extend([obj])
+                else:
+                    exception_msg = ("Object returned from model inference is of type {}."
+                        "It should be an np.array image or a general FieldValuePairAttrib".format(type(obj)))
+                    raise Exception(exception_msg)
+            resp_inf.num_images = num_images
+            resp_inf.num_objects = num_objects
+            self.vprint('Infering back {} image(s) and {} object(s)'.format(num_images, num_objects))
+            if num_images == 0 and num_objects == 0:
+                raise Exception("No images or non-image objects were returned from model inference")
             # Add RespondInference message to RespondWrapper
             resp_msg.r2.CopyFrom(resp_inf)
         except Exception as e:
             # Pass error message to the client
+            self.vprint('Exception caught on inference on model: {}'.format(str(e)))
             resp_msg = self.errormsg(str(e))
-
+            
         return resp_msg
 
     def recvall(self, n):
-        """Helper function to recv n bytes or return None if EOF is hit
-        """
+        """Helper function to receive n bytes or return None if EOF is hit"""
         data = b''
         while len(data) < n:
             packet = self.request.recv(n - len(data))
@@ -189,8 +213,7 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             totalsent = totalsent + sent
 
     def errormsg(self, error):
-        """Create an error message (to send a Server error to the Nuke Client)
-        """
+        """Create an error message to send a Server error to the Nuke Client"""
         resp_msg = RespondWrapper()
         resp_msg.info = True
         error_msg = Error() # from message_pb2.py

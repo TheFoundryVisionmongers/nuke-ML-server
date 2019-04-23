@@ -4,6 +4,7 @@
 set (DL_CLIENT_SOURCES
         DLClient.cpp
         DLClientComms.cpp
+        DLClientModelManager.cpp
 )
 
 find_package(Protobuf REQUIRED)

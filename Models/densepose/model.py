@@ -23,7 +23,7 @@ import detectron.core.test_engine as infer_engine
 import detectron.datasets.dummy_datasets as dummy_datasets
 import detectron.utils.c2 as c2_utils
 
-import vis as vis_utils
+import visualisation as vis_utils
 from utils import dict_equal
 
 import numpy as np
@@ -34,9 +34,9 @@ class Model(BaseModel):
         super(Model, self).__init__()
         self.name = 'DensePose'
 
-        # TODO: Make cfg_file and weights options
-        self.cfg_file= 'models/densepose/DensePose_ResNet101_FPN_s1x-e2e.yaml'
-        self.default_cfg = copy.deepcopy(AttrDict(cfg)) #cfg from detectron.core.config
+        # Configuration and weights options
+        self.cfg_file = 'models/densepose/DensePose_ResNet101_FPN_s1x-e2e.yaml'
+        self.default_cfg = copy.deepcopy(AttrDict(cfg)) # cfg from detectron.core.config
         self.densepose_cfg = AttrDict()
         self.weights = 'models/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl'
         self.dummy_coco_dataset = dummy_datasets.get_coco_dataset()
@@ -50,24 +50,24 @@ class Model(BaseModel):
         self.alpha = 0.4
 
         # Define exposed options
-        self.options= ('show_human_index', 'show_uv', 'show_grid', 'show_border',
-            'border_thick', 'alpha')
+        self.options = (
+            'show_human_index', 'show_uv', 'show_grid', 'show_border',
+            'border_thick', 'alpha',
+            )
 		# Define inputs/outputs
-        self.inputs= {'input': 3} #3-channel input
-        self.outputs= {'output': 3} #3-channel output
+        self.inputs = {'input': 3}
+        self.outputs = {'output': 3}
 
 
     def inference(self, image_list):
-        """Does an inference of the DensePose model with a set of image inputs
+        """Do an inference of the DensePose model with a set of image inputs.
 
         # Arguments:
-            image_list: The inpput image list
-        
-        # Returns:
-            The result of the inference
+            image_list: The input image list
+            
+        Return the result of the inference.        
         """
-
-        # Directly returns image when no inference options
+        # Directly return image when no inference options
         if not (self.show_human_index or self.show_uv or self.show_border or self.show_grid):
             return [image_list[0]]
 
@@ -111,7 +111,8 @@ class Model(BaseModel):
             show_grid=self.show_grid,
             show_border=self.show_border,
             border_thick=self.border_thick,
-            alpha=self.alpha)
+            alpha=self.alpha
+            )
 
         res = self.srgb_to_linear(res.astype(np.float32) / 255.)
 

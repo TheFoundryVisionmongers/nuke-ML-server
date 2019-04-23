@@ -5,7 +5,7 @@
 # (https://github.com/facebookresearch/Detectron/blob/master/LICENSE)
 # A copy of the license can be found in the current folder "LICENSE_detectron".
 #
-# We are sharing this under the Apache License.
+# We are sharing this under the Apache License, Version 2.0.
 ########################################################################
 
 from ..baseModel import BaseModel
@@ -34,7 +34,7 @@ class Model(BaseModel):
         super(Model, self).__init__()
         self.name = 'Mask RCNN'
 
-        # TODO: Make cfg_file and weights options
+        # Configuration and weights options
         self.cfg_file = 'models/mrcnn/e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml'
         self.default_cfg = copy.deepcopy(AttrDict(cfg)) #cfg from detectron.core.config
         self.mrcnn_cfg = AttrDict()
@@ -53,22 +53,22 @@ class Model(BaseModel):
         self.binary_masks = False
 
         # Define exposed options
-        self.options = ('show_box', 'show_class', 'thresh', 'alpha', 'show_border',
-         'border_thick', 'bbox_thick', 'font_scale', 'binary_masks')
+        self.options = (
+            'show_box', 'show_class', 'thresh', 'alpha', 'show_border',
+            'border_thick', 'bbox_thick', 'font_scale', 'binary_masks',
+            )
         # Define inputs/outputs
         self.inputs = {'input': 3}
         self.outputs = {'output': 3}
 
     def inference(self, image_list):
-        """Does an inference on the model with a set of inputs.
+        """Do an inference on the model with a set of inputs.
 
         # Arguments:
-            image_list: The input image list.
+            image_list: The input image list
 
-        # Returns:
-            The result of the inference.
+        Return the result of the inference.
         """
-
         image = image_list[0]
         image = self.linear_to_srgb(image)*255.
         imcpy = image.copy()
@@ -85,7 +85,7 @@ class Model(BaseModel):
             assert_and_infer_cfg(cache_urls=False, make_immutable=False)
             self.model = infer_engine.initialize_model_from_cfg(self.weights)
             # Save mask rcnn full configuration file
-            self.mrcnn_cfg = copy.deepcopy(AttrDict(cfg)) #cfg from detectron.core.config
+            self.mrcnn_cfg = copy.deepcopy(AttrDict(cfg)) # cfg from detectron.core.config
         else:
             # There is a global config file for all detectron models (Densepose, Mask RCNN..)
             # Check if current global config file is correct for mask rcnn
@@ -103,7 +103,8 @@ class Model(BaseModel):
                 imcpy,
                 cls_boxes,
                 cls_segms,
-                thresh=self.thresh)
+                thresh=self.thresh
+                )
         else:
             res = vis_utils.vis_one_image_opencv(
                 imcpy,

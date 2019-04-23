@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <cstring>
 #include <sstream>
 #include <arpa/inet.h>
@@ -14,61 +15,160 @@
 
 #include "DLClientComms.h"
 
-DLClientComms::DLClientComms()
+// Static consts
+
+/*static*/ const int DLClientComms::kNumberOfBytesHeaderSize = 12;
+
+/*static*/ const int DLClientComms::kTimeout = 500000;
+/*static*/ const int DLClientComms::kMaxNumberOfTry = 5;
+
+// Static non-const variables
+/*static*/ bool DLClientComms::Verbose = true;
+
+//! Constructor. Initialize user controls to their default values, then try to
+//! connect to the specified host / port. Following the c-tor, you can test for
+//! a valid connection by calling isConnected().
+DLClientComms::DLClientComms(const std::string& hostStr, int port)
 : _isConnected(false)
 , _socket(0)
-, _verbose(true)
+, _hostStr(hostStr)
+, _port(port)
 {
+  // On construction, try to connect with the given host & port
+  connectLoop();
 }
 
+//! Destructor. Tear down any existing connection.
 DLClientComms::~DLClientComms()
 {
+  // On destruction, we need to close the socket and reset our connection variable
+  closeConnection();
 }
 
-//! Returns whether this object is connected to the specified server.
+//! Test if a given hostname is valid, returning true if it is, false otherwise
+/*static*/ bool DLClientComms::ValidateHostName(const std::string& hostStr)
+{
+  // Check if correct ipv4 or ipv6 addresses
+  struct sockaddr_in sa;
+  struct sockaddr_in6 sa6;
+  bool isIPv4 = inet_pton(AF_INET, hostStr.c_str(), &(sa.sin_addr)) != 0;
+  bool isIPv6 = inet_pton(AF_INET6, hostStr.c_str(), &(sa6.sin6_addr)) != 0;
+
+  return isIPv4 || isIPv6;
+}
+
+//! Print debug related information to std::cout, when ::Verbose is set to true.
+/*static*/ void DLClientComms::Vprint(std::string msg)
+{
+  if (DLClientComms::Verbose) {
+    std::cerr << "Client -> " << msg << std::endl;
+  }
+}
+
+//! Return whether this object is connected to the specified server.
 bool DLClientComms::isConnected() const
 {
   return _isConnected;
 }
 
-//! Tests if a given hostname is valid, returning true if it is, false otherwise
-bool DLClientComms::validateHostName(const std::string& hostStr)
+//! Function for discovering & negotiating the available models and their parameters.
+//! Return true on success, false otherwise with the errorMsg filled in.
+bool DLClientComms::sendInfoRequestAndReadInfoResponse(dlserver::RespondWrapper& responseWrapper, std::string& errorMsg)
 {
-  // check if correct ipv4 or ipv6 addresses
-  struct sockaddr_in sa;
-  struct sockaddr_in6 sa6;
-  bool is_ipv4 = inet_pton(AF_INET, hostStr.c_str(), &(sa.sin_addr)) != 0;
-  bool is_ipv6 = inet_pton(AF_INET6, hostStr.c_str(), &(sa6.sin6_addr)) != 0;
+  // Try connect if we haven't already
+  connectLoop();
+  if(!isConnected()) {
+    errorMsg = "Unable to connect to server.";
+    return false;
+  }
 
-  return is_ipv4 || is_ipv6;
+  // Send the request for server & model info, and parse the response.
+  if(!sendInfoRequest()) {
+    errorMsg = "Error sending info request.";
+    return false;
+  }
+
+  // Check that the comms read the response OK
+  if(!readInfoResponse(responseWrapper)) {
+    errorMsg = "Error reading info response.";
+    return false;
+  }
+  // Check if error occured in the server
+  if (responseWrapper.has_error()) {
+    errorMsg = responseWrapper.error().msg();
+    return false;
+  }
+
+  // Return true for success if we reached here
+  return true;
 }
 
-//! Tries to connect to the server with the specified hostStr & port. After it
-//! returns, you can test if it was successful by calling isConnected().
-void DLClientComms::connectLoop(const std::string& hostStr, int port)
+bool DLClientComms::sendInferenceRequestAndReadInferenceResponse(dlserver::RequestInference& requestInference, dlserver::RespondWrapper& responseWrapper, std::string& errorMsg)
 {
-  const int kTimeout = 500000;
-  const int kMaxNumberOfTry = 5;
+  // Try connect if we haven't already
+  connectLoop();
+  if(!isConnected()) {
+    errorMsg = "Unable to connect to server.";
+    return false;
+  }
+
+  // Send the inference request.
+  if(!sendInferenceRequest(requestInference)) {
+    errorMsg = "Error sending inference request.";
+    return false;
+  }
+
+  // Await and process the response.
+  if(!readInferenceResponse(responseWrapper)) {
+    errorMsg = "Error reading inference response.";
+    return false;
+  }
+
+  // Check if an error occured in the server
+  if (responseWrapper.has_error()) {
+    errorMsg = responseWrapper.error().msg();
+    return false;
+  }
+
+  // Return true for success if we reached here
+  return true;
+}
+
+//! Try to connect to the server with the specified _hostStr & _port. After it
+//! returns, you can test if it was successful by calling isConnected().
+void DLClientComms::connectLoop()
+{
+  // First test if there's an existing connected, if so return immediately.
+  if ( isConnected() ) {
+    return;
+  }
+
+  // Otherwise establish a new connection.
   int i = 0;
   std::string errorStr;
-  while (!setupConnection(hostStr, port, errorStr)) {
+  while (!setupConnection(errorStr)) {
     usleep(kTimeout);
     i++;
     if (i >= kMaxNumberOfTry) {
-      std::cerr << "Client -> Error setting up connection:" << std::endl;
-      std::cerr << "\t" << errorStr.c_str() << std::endl;
-      vprint("-----------------------------------------------");
+      std::stringstream strStrm;
+      strStrm << "Error setting up connection:" << std::endl;
+      strStrm << "\t" << errorStr.c_str();
+      DLClientComms::Vprint(strStrm.str());
       _isConnected = false;
       return;
     }
-    std::cerr << "Client -> Failing to connect. Attempts: " << i << std::endl;
+    std::stringstream strStrm;
+    strStrm << "Failing to connect. Attempts: " << i;
+    DLClientComms::Vprint(strStrm.str());
   }
   _isConnected = true;
 }
 
-//! Create a socket to connect to the server specified by hostStr and port
-bool DLClientComms::setupConnection(const std::string& hostStr, int port, std::string& errorStr)
+//! Create a socket to connect to the server specified by _hostStr and _port
+bool DLClientComms::setupConnection(std::string& errorStr)
 {
+  // This assumes there is no prior connection. Before calling this any existing connection
+  // should be closed.
   try {
     int status;
     struct addrinfo hints;
@@ -83,16 +183,18 @@ bool DLClientComms::setupConnection(const std::string& hostStr, int port, std::s
     char s[INET_ADDRSTRLEN]; // to store the network address as a char
 
     // Fill the res data structure and make sure that the results make sense.
-    status = getaddrinfo(hostStr.c_str(), std::to_string(port).c_str(), &hints, &aiResult);
-    inet_ntop(aiResult->ai_family, get_in_addr((struct sockaddr *)aiResult->ai_addr), s, sizeof s);
-    if (_verbose) {
-      std::cerr << "Client -> Trying to connect to " << s << std::endl;
-    }
+    status = getaddrinfo(_hostStr.c_str(), std::to_string(_port).c_str(), &hints, &aiResult);
+    inet_ntop(aiResult->ai_family, getInAddr((struct sockaddr *)aiResult->ai_addr), s, sizeof s);
+
+    std::stringstream strStrm;
+    strStrm << "Trying to connect to " << s;
+    DLClientComms::Vprint(strStrm.str());
+
     if (status != 0) {
       std::stringstream ss;
-      ss << "Client -> getaddrinfo error: " << gai_strerror(status);
+      ss << "getaddrinfo error: " << gai_strerror(status);
       errorStr = ss.str();
-      std::cerr << errorStr.c_str() << std::endl;
+      DLClientComms::Vprint(errorStr);
       return false;
     }
 
@@ -100,9 +202,9 @@ bool DLClientComms::setupConnection(const std::string& hostStr, int port, std::s
     _socket = socket(aiResult->ai_family, aiResult->ai_socktype, aiResult->ai_protocol);
     if (_socket < 0) {
       std::stringstream ss;
-      ss << "Client -> socket error: " << gai_strerror(_socket);
+      ss << "socket error: " << gai_strerror(_socket);
       errorStr = ss.str();
-      std::cerr << errorStr.c_str() << std::endl;
+      DLClientComms::Vprint(errorStr);
       return false;
     }
 
@@ -110,21 +212,25 @@ bool DLClientComms::setupConnection(const std::string& hostStr, int port, std::s
     int enable = 1;
     if (setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
       errorStr = "setsockopt(SO_REUSEADDR) failed";
+      DLClientComms::Vprint(errorStr);
       return false;
     }
 
     long socket_flags;
     // Set non-blocking connect socket
     if ((socket_flags = fcntl(_socket, F_GETFL, NULL)) < 0) { // get socket flag argument
-      std::cerr << "Client -> socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")" << std::endl;
+      std::stringstream ss;
+      ss << "socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")";
+      errorStr = ss.str();
+      DLClientComms::Vprint(errorStr);
       return false;
     }
     socket_flags |= O_NONBLOCK; // add non-blocking flag to the socket flags
     if (fcntl(_socket, F_SETFL, socket_flags) < 0) { // update socket flags
       std::stringstream ss;
-      ss << "Client -> socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")";
+      ss << "socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")";
       errorStr = ss.str();
-      std::cerr << errorStr.c_str() << std::endl;
+      DLClientComms::Vprint(errorStr);
       return false;
     }
 
@@ -150,7 +256,7 @@ bool DLClientComms::setupConnection(const std::string& hostStr, int port, std::s
             std::stringstream ss;
             ss << "Error in socket connection " << valopt << " - " << strerror(valopt);
             errorStr = ss.str();
-            std::cerr << errorStr.c_str() << std::endl;
+            DLClientComms::Vprint(errorStr);
             return false;
           }
         }
@@ -160,33 +266,34 @@ bool DLClientComms::setupConnection(const std::string& hostStr, int port, std::s
       }
       else {
         std::stringstream ss;
-        ss << "Client -> socket error connecting " << errno << " " << strerror(errno);
+        ss << "socket error connecting " << errno << " " << strerror(errno);
         errorStr = ss.str();
-        std::cerr << errorStr.c_str() << std::endl;
+        DLClientComms::Vprint(errorStr);
         return false;
       }
     }
     // Set to blocking mode again
     if ((socket_flags = fcntl(_socket, F_GETFL, NULL)) < 0) { // get socket flag argument
       std::stringstream ss;
-      ss << "Client -> socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")";
+      ss << "socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")";
       errorStr = ss.str();
-      std::cerr << errorStr.c_str() << std::endl;
+      DLClientComms::Vprint(errorStr);
       return false;
     }
     socket_flags &= (~O_NONBLOCK); // remove non-blocking flag from the socket
     if (fcntl(_socket, F_SETFL, socket_flags) < 0) { // update socket flags
       std::stringstream ss;
-      ss << "Client -> socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")" << std::endl;
+      ss << "socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")";
       errorStr = ss.str();
-      std::cerr << errorStr.c_str() << std::endl;
+      DLClientComms::Vprint(errorStr);
       return false;
     }
 
-    inet_ntop(aiResult->ai_family, get_in_addr((struct sockaddr *)aiResult->ai_addr), s, sizeof s);
-    if (_verbose) {
-      std::cerr << "Client -> Connected to " << s << std::endl;
-    }
+    inet_ntop(aiResult->ai_family, getInAddr((struct sockaddr *)aiResult->ai_addr), s, sizeof s);
+
+    std::stringstream ss;
+    ss << "Connected to " << s;
+    DLClientComms::Vprint(ss.str());
 
     // Free the aiResult linked list after we are done with it
     freeaddrinfo(aiResult);
@@ -195,180 +302,190 @@ bool DLClientComms::setupConnection(const std::string& hostStr, int port, std::s
     std::stringstream ss;
     ss << e.what();
     errorStr = ss.str();
-    std::cerr << errorStr.c_str() << std::endl;
+    DLClientComms::Vprint(errorStr);
     return false;
   }
   return true;
 }
 
-//! Requests the server to return a future message about its models. This is used
+//! Request the server to return a future message about its models. This is used
 //! to instruct the server that it should set itself up.
 bool DLClientComms::sendInfoRequest()
 {
   int bytecount;
-  vprint("Sending info request");
+  DLClientComms::Vprint("Sending info request");
 
   // Create message
-  dlserver::RequestWrapper req_wrapper;
-  req_wrapper.set_info(true);
-  dlserver::RequestInfo* req_info = new dlserver::RequestInfo;
-  req_info->set_info(true);
-  req_wrapper.set_allocated_r1(req_info);
-  vprint("Created message");
+  dlserver::RequestWrapper requestWrapper;
+  requestWrapper.set_info(true);
+  dlserver::RequestInfo* requestInfo = new dlserver::RequestInfo;
+  requestInfo->set_info(true);
+  requestWrapper.set_allocated_r1(requestInfo);
+  DLClientComms::Vprint("Created message");
 
   // Generate the data which should be sent over the network
-  std::string request_s;
-  req_wrapper.SerializeToString(&request_s);
-  int length = request_s.size();
-  vprint("Serialized message");
+  std::string requestStr;
+  requestWrapper.SerializeToString(&requestStr);
+  int length = requestStr.size();
+  DLClientComms::Vprint("Serialized message");
 
   // Creating header
-  char hdr_send[12];
+  char hdrSend[kNumberOfBytesHeaderSize];
   std::ostringstream ss;
-  ss << std::setw(12) << std::setfill('0') << length;
-  ss.str().copy(hdr_send, 12);
-  vprint("Created char array of length " + std::to_string(length));
+  ss << std::setw(kNumberOfBytesHeaderSize) << std::setfill('0') << length;
+  ss.str().copy(hdrSend, kNumberOfBytesHeaderSize);
+  DLClientComms::Vprint("Created char array of length " + std::to_string(length));
 
   // Copy to char array
-  char* to_send = new char[12 + length];
-  for (int i = 0; i < 12; ++i) {
-    to_send[i] = hdr_send[i];
+  std::vector<char> toSend(kNumberOfBytesHeaderSize + length);
+  for (int i = 0; i < kNumberOfBytesHeaderSize; ++i) {
+    toSend[i] = hdrSend[i];
   }
 
   for (int i = 0; i < length; ++i) {
-    char val = request_s[i];
-    to_send[i + 12] = val;
+    char val = requestStr[i];
+    toSend[i + kNumberOfBytesHeaderSize] = val;
   }
-  vprint("Copied to char array");
+  DLClientComms::Vprint("Copied to char array");
 
   // Send header with number of bytes
-  if ((bytecount = send(_socket, (void *)to_send, 12 + length, 0)) == -1) {
-    std::cerr << "Client -> Error sending data " << errno << std::endl;
+  if ((bytecount = send(_socket, (void *)&toSend[0], kNumberOfBytesHeaderSize + length, 0)) == -1) {
+    std::stringstream ss;
+    ss << "Error sending data " << errno;
+    DLClientComms::Vprint(ss.str());
+    return false;
   }
 
-  vprint("Message sent");
-
-  delete[] to_send;
+  DLClientComms::Vprint("Message sent");
 
   return true;
 }
 
-//! Retrieve the response from the server and store it in resp_wrapper, to be parsed
+//! Retrieve the response from the server and store it in responseWrapper, to be parsed
 //! elsewhere.
-bool DLClientComms::readInfoResponse(dlserver::RespondWrapper& resp_wrapper)
+bool DLClientComms::readInfoResponse(dlserver::RespondWrapper& responseWrapper)
 {
   int bytecount;
 
   // Read header first
-  vprint("Reading header data");
-  char buffer_hdr[12];
-  if ((bytecount = recv(_socket, buffer_hdr, 12, 0)) == -1) {
-    std::cerr << "Client -> Error receiving data " << std::endl;
+  DLClientComms::Vprint("Reading header data");
+  char hdrBuffer[kNumberOfBytesHeaderSize];
+  if ((bytecount = recv(_socket, hdrBuffer, kNumberOfBytesHeaderSize, 0)) == -1) {
+    DLClientComms::Vprint("Error receiving data.");
+    return false;
   }
-  google::protobuf::uint32 siz = readHdr(buffer_hdr);
+  google::protobuf::uint32 siz = readHdr(hdrBuffer);
 
-  return readInfoResponse(siz, resp_wrapper);
+  return readInfoResponse(siz, responseWrapper);
 }
 
-//! Helper to the above 'readInfoResponse' function, pulls the data after
-//! determining the size 'siz' from the header.
-bool DLClientComms::readInfoResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& resp_wrapper)
+//! Pull the data after determining the size 'siz' from the header.
+//! Helper to the above 'readInfoResponse' function.
+bool DLClientComms::readInfoResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& responseWrapper)
 {
   // Reading message data
-  vprint("Reading data of size: " + std::to_string(siz));
+  DLClientComms::Vprint("Reading data of size: " + std::to_string(siz));
   int bytecount;
   char buffer[siz];
 
-  resp_wrapper.set_info(true);
+  responseWrapper.set_info(true);
 
   // Read the entire buffer
   if ((bytecount = recv(_socket, (void *)buffer, siz, 0)) == -1) {
-    std::cerr << "Client -> Error receiving data " << errno << std::endl;
+    std::stringstream ss;
+    ss << "Error receiving data " << errno;
+    DLClientComms::Vprint(ss.str());
+    return false;
   }
 
   // Deserialize using protobuf functions
-  vprint("Deserializing message");
+  DLClientComms::Vprint("Deserializing message");
   google::protobuf::io::ArrayInputStream ais(buffer, siz);
-  google::protobuf::io::CodedInputStream coded_input(&ais);
-  google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
-  // Fill the message resp_wrapper with a protocol buffer parsed from coded_input
-  resp_wrapper.ParseFromCodedStream(&coded_input);
-  coded_input.PopLimit(msgLimit);
+  google::protobuf::io::CodedInputStream codedInput(&ais);
+  google::protobuf::io::CodedInputStream::Limit msgLimit = codedInput.PushLimit(siz);
+  // Fill the message responseWrapper with a protocol buffer parsed from codedInput
+  responseWrapper.ParseFromCodedStream(&codedInput);
+  codedInput.PopLimit(msgLimit);
 
-  return false;
-}
-
-//! Sends a messaged image to to the server.
-bool DLClientComms::sendInferenceRequest(dlserver::RequestInference* req_inference) {
-  int bytecount;
-
-  // Create message
-  dlserver::RequestWrapper req_wrapper;
-  req_wrapper.set_info(true);
-
-  req_wrapper.set_allocated_r2(req_inference);
-
-  // Serialize message
-  std::string request_s;
-  req_wrapper.SerializeToString(&request_s);
-  int length = request_s.size();
-  vprint("Serialized message");
-
-  // Creating header
-  char hdr_send[12];
-  std::ostringstream ss;
-  ss << std::setw(12) << std::setfill('0') << length;
-  ss.str().copy(hdr_send, 12);
-  vprint("Created char array of length " + std::to_string(length));
-
-  // Copy to char array
-  char* to_send = new char[12 + length];
-  for (int i = 0; i < 12; ++i) {
-    to_send[i] = hdr_send[i];
-  }
-
-  for (int i = 0; i < length; ++i) {
-    char val = request_s[i];
-    to_send[i + 12] = val;
-  }
-  vprint("Copied to char array");
-
-  // Send header with number of bytes
-  if ((bytecount = send(_socket, (void *)to_send, 12 + length, 0)) == -1) {
-    std::cerr << "Client -> Error sending data " << errno << std::endl;
-  }
-
-  vprint("Message sent");
-
-  delete[] to_send;
-
+  // Return true on success
   return true;
 }
 
-//! Marshalls the returned image into a float buffer of the original image size. Note, this
+//! Send a messaged image to to the server.
+bool DLClientComms::sendInferenceRequest(dlserver::RequestInference& requestInference) {
+  int bytecount;
+
+  // Create message
+  dlserver::RequestWrapper requestWrapper;
+  requestWrapper.set_info(true);
+
+  requestWrapper.set_allocated_r2(&requestInference);
+
+  // Serialize message
+  std::string requestStr;
+  requestWrapper.SerializeToString(&requestStr);
+  int length = requestStr.size();
+  DLClientComms::Vprint("Serialized message");
+
+  // Creating header
+  char hdrSend[kNumberOfBytesHeaderSize];
+  std::ostringstream ss;
+  ss << std::setw(kNumberOfBytesHeaderSize) << std::setfill('0') << length;
+  ss.str().copy(hdrSend, kNumberOfBytesHeaderSize);
+  DLClientComms::Vprint("Created char array of length " + std::to_string(length));
+
+  // Copy to char array
+  std::vector<char> toSend(kNumberOfBytesHeaderSize + length);
+  for (int i = 0; i < kNumberOfBytesHeaderSize; ++i) {
+    toSend[i] = hdrSend[i];
+  }
+
+  for (int i = 0; i < length; ++i) {
+    char val = requestStr[i];
+    toSend[i + kNumberOfBytesHeaderSize] = val;
+  }
+  DLClientComms::Vprint("Copied to char array");
+
+  // Send header with number of bytes
+  if ((bytecount = send(_socket, (void *)&toSend[0], kNumberOfBytesHeaderSize + length, 0)) == -1) {
+    isConnected();
+    std::stringstream ss;
+    ss << "Error sending data " << errno;
+    DLClientComms::Vprint(ss.str());
+    return false;
+  }
+
+  DLClientComms::Vprint("Message sent");
+
+  // Return true on success
+  return true;
+}
+
+//! Marshall the returned image into a float buffer of the original image size. Note, this
 //! expects the size of result to have been set to the same size as the image that was
 //! previously sent to the server.
-bool DLClientComms::readInferenceResponse(dlserver::RespondWrapper& resp_wrapper)
+bool DLClientComms::readInferenceResponse(dlserver::RespondWrapper& responseWrapper)
 {
   int bytecount;
   
   // Read header first
-  vprint("Reading header data");
-  char buffer_hdr[12];
-  if ((bytecount = recv(_socket, buffer_hdr, 12, 0)) == -1) {
-    std::cerr << "Client -> Error receiving data " << std::endl;
+  DLClientComms::Vprint("Reading header data");
+  char hdrBuffer[kNumberOfBytesHeaderSize];
+  if ((bytecount = recv(_socket, hdrBuffer, kNumberOfBytesHeaderSize, 0)) == -1) {
+    DLClientComms::Vprint("Error receiving data.");
+    return false;
   }
-  google::protobuf::uint32 siz = readHdr(buffer_hdr);
+  google::protobuf::uint32 siz = readHdr(hdrBuffer);
 
-  return readInferenceResponse(siz, resp_wrapper);
+  return readInferenceResponse(siz, responseWrapper);
 }
 
-//! Helper to the above 'readInferenceResponse' function, pulls the data after
-//! determining the size 'siz' from the header.
-bool DLClientComms::readInferenceResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& resp_wrapper)
+//! Pull the data after determining the size 'siz' from the header.
+//! Helper to the above 'readInferenceResponse' function.
+bool DLClientComms::readInferenceResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& responseWrapper)
 {
-  vprint("Reading data of size: " + std::to_string(siz));
-  resp_wrapper.set_info(true);
+  DLClientComms::Vprint("Reading data of size: " + std::to_string(siz));
+  responseWrapper.set_info(true);
 
   // Read the buffer
   std::string output;
@@ -382,41 +499,50 @@ bool DLClientComms::readInferenceResponse(google::protobuf::uint32 siz, dlserver
   }
 
   if (n < 0) {
-    std::cerr << "Client -> Error receiving data " << std::endl;
+    DLClientComms::Vprint("Error receiving data.");
+    return false;
   }
 
   // Deserialize using protobuf functions
-  vprint("Deserializing message");
+  DLClientComms::Vprint("Deserializing message");
   google::protobuf::io::ArrayInputStream ais(output.c_str(), siz);
-  google::protobuf::io::CodedInputStream coded_input(&ais);
-  google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
-  resp_wrapper.ParseFromCodedStream(&coded_input);
-  coded_input.PopLimit(msgLimit);
+  google::protobuf::io::CodedInputStream codedInput(&ais);
+  google::protobuf::io::CodedInputStream::Limit msgLimit = codedInput.PushLimit(siz);
+  responseWrapper.ParseFromCodedStream(&codedInput);
+  codedInput.PopLimit(msgLimit);
 
-  return false;
+  // Return true on success
+  return true;
+}
+
+//! Close the current connection if one is open.
+void DLClientComms::closeConnection()
+{
+  // Check if a valid socket is open
+  if(_socket) {
+    // If so, close & reset the state variables
+    close(_socket);
+    _socket = 0;
+    DLClientComms::Vprint("Closed connection\n"
+      "-----------------------------------------------");
+  }
+  _isConnected = false;
 }
 
 google::protobuf::uint32 DLClientComms::readHdr(char* buf)
 {
   google::protobuf::uint32 size;
-  char tmp[13];
-  std::memcpy(tmp, buf, 12);
-  tmp[12] = '\0';
+  char tmp[kNumberOfBytesHeaderSize+1];
+  std::memcpy(tmp, buf, kNumberOfBytesHeaderSize);
+  tmp[kNumberOfBytesHeaderSize] = '\0';
   size = atoi(tmp);
   return size;
 }
 
-void* DLClientComms::get_in_addr(struct sockaddr* sa)
+void* DLClientComms::getInAddr(struct sockaddr* sa)
 {
   if (sa->sa_family == AF_INET) {
     return &(((struct sockaddr_in *)sa)->sin_addr);
   }
   return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-}
-
-void DLClientComms::vprint(std::string msg)
-{
-  if (_verbose) {
-    std::cerr << "Client -> " << msg << std::endl;
-  }
 }

@@ -17,8 +17,7 @@ import detectron.utils.vis as vis_utils
 _WHITE = (255, 255, 255)
 
 def vis_mask(img, mask, col, alpha=0.4, show_border=True, border_thick=1):
-    """Visualizes a single binary mask."""
-
+    """Visualize a single binary mask."""
     img = img.astype(np.float32)
     idx = np.nonzero(mask)
 
@@ -33,16 +32,15 @@ def vis_mask(img, mask, col, alpha=0.4, show_border=True, border_thick=1):
     return img.astype(np.uint8)
 
 def vis_isocontour(img, img_IUV):
-    """Visualizes the isocontour of DensePose IUV fields results using matplotlib
+    """Visualize the isocontour of DensePose IUV fields results using matplotlib.
 
     # Arguments:
         img: initial image
         img_IUV: densepose UV fields inference of img
         
-    # Returns:
+    # Return:
         A numpy array with isocontour following the given IUV fields
     """
-
     # Matplotlib visualisation of isocontour
     fig = plt.figure(figsize=[12,12])
     plt.contour( img_IUV[:,:,1]/255.,10, linewidths = 1 ) # isocontour of U
@@ -70,24 +68,22 @@ def vis_isocontour(img, img_IUV):
     return img_plt_cropped
 
 
-def vis_densepose(
-    img, cls_boxes, cls_bodys, show_human_index=False, show_uv=True, show_grid=False,
-    show_border=False, border_thick=1, alpha=0.4):
-    """Constructs a numpy array showing the densepose detection
+def vis_densepose(img, cls_boxes, cls_bodys, show_human_index=False, show_uv=True,
+        show_grid=False, show_border=False, border_thick=1, alpha=0.4):
+    """Construct a numpy array showing the densepose detection.
 
     # Arguments:
         img: image used for densepose inference
         cls_boxes: bounding boxes found during inference of image img
-        cls_bodys: UV bodys found during inference of image img
+        cls_bodys: UV of each body parts found during inference of image img
         show_uv: show the UV fields
         show_grid: show the isocontours of the UV fields
         alpha: how much blended the densepose visualisation is
             with the original image img
         
-    # Returns:
+    # Return:
         A numpy image array showing the densepose detection
     """
-
     if isinstance(cls_boxes, list):
         boxes, _, _, _ = vis_utils.convert_from_cls_format(
             cls_boxes, None, None)
@@ -124,11 +120,11 @@ def vis_densepose(
     all_coords = all_coords.astype(np.uint8)
     all_inds = all_inds.astype(np.uint8)
 
-    res = img #initialise image result to input image
+    res = img # initialise image result to input image
 
     if show_human_index:
         all_inds_vis = all_inds * (210.0/all_inds.max()) # normalise all_inds values between 0. and 210.
-        all_inds_stacked = np.stack((all_inds_vis,)*3, axis = -1)
+        all_inds_stacked = np.stack((all_inds_vis,)*3, axis=-1)
         res = all_inds_stacked
     
     elif show_grid:
@@ -140,7 +136,9 @@ def vis_densepose(
         alpha = 0.
 
     if show_border:
-        res = vis_mask(res, all_inds, np.array([150., 20., 200.]),
-            alpha=alpha, show_border=show_border, border_thick=border_thick)
+        res = vis_mask(
+            res, all_inds, np.array([150., 20., 200.]),
+            alpha=alpha, show_border=show_border, border_thick=border_thick
+            )
 
     return res

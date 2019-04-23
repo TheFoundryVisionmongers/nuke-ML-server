@@ -15,12 +15,12 @@
 
 // Local include files
 #include "DLClientComms.h"
-
+#include "DLClientModelManager.h"
 
 //! The Deep Learning (DL) Client plug-in connects Nuke to a Python server to apply DL models to images.
 /*! This plug-in can connect to a server (given a host and port), which responds
     with a list of available Deep Learning (DL) models and options.
-    On every /a engine() call, the image and model options are sent from Nuke to the server,
+    On every /a renderStripe() call, the image and model options are sent from Nuke to the server,
     there the server can process the image by doing Deep Learning inference,
     finally the resulting image is sent back to Nuke.
 */
@@ -36,6 +36,7 @@ public:
   static const int         kDefaultPortNumber;
 
 private:
+  static const DD::Image::ChannelSet kDefaultChannels;
   static const int kDefaultNumberOfChannels;
 
 public:
@@ -58,15 +59,15 @@ public:
 
   bool useStripes() const;
   bool renderFullPlanes() const;
-  
+
   void _validate(bool);
   void getRequests(const DD::Image::Box& box, const DD::Image::ChannelSet& channels, int count, DD::Image::RequestOutput &reqData) const;
 
-  // This function does all the work.
-  /*! For each line in the area passed to request(), this will be called. It must
-      calculate the image data for a region at vertical position \a y, and between
-      horizontal positions \a x and \a r, and write it to the passed row
-      structure. Usually this works by asking the input for data, and modifying it.
+  /*! This function is called by Nuke for processing the current image.
+      The image and model options are sent from Nuke to the server,
+      there the server can process the image by doing Deep Learning inference,
+      finally the resulting image is sent back to Nuke.
+      The function tries to reconnect if no connection is set.
   */
   void renderStripe(DD::Image::ImagePlane& imagePlane);
 
@@ -81,56 +82,33 @@ public:
   const char* Class() const;
   const char* node_help() const;
 
-private:
-   //! Allocates and copies input pixels to raw buffers.
-  void initBuffers(DD::Image::ImagePlane& imagePlane);
-  void initInputs(DD::Image::ImagePlane &imagePlane);
-  void initInput(int input, DD::Image::ImagePlane &imagePlane);
-  void renderOutputBuffer(DD::Image::ImagePlane& imagePlane);
+  DLClientModelManager& getModelManager();
 
+private:
   // Private functions for talking to the server
-  //! Try connect to the server and set-up the relevant knobs. Returns true on
+  //! Try connect to the server and set-up the relevant knobs. Return true on
   //! success, false otherwise and setting a descriptive error in errorMsg.
-  bool tryConnect(std::string& errorMsg);
-  
-  //! Connect to server, then send inference request and read inference response
-  bool processImage(const std::string& hostStr, int port);
-  //! Parse the model options from the DL server.
-  void parseOptions();
-  //! Update any current options from any changes to the DL server.
-  void updateOptions(dlserver::Model* model);
+  bool refreshModelsAndKnobsFromServer(std::string& errorMsg);
 
-private:
-  // Private dynamic knob helper functions.
+  //! Return whether we successfully managed to pull model
+  //! info from the server at some time in the past, and the selected model is
+  //! valid.
+  bool haveValidModelInfo() const;
 
-  // Getters of the class
-  int getNumOfFloats() const;
-  int getNumOfInts() const;
-  int getNumOfBools() const;
-  int getNumOfStrings() const;
+  //! Connect to server, then send inference request and read inference response.
+  //! Return true on success, false otherwise filling in the errorMsg.
+  bool processImage(const std::string& hostStr, int port, dlserver::RespondWrapper& responseWrapper, std::string& errorMsg);
 
-  std::string getDynamicBoolName(int idx);
-  std::string getDynamicFloatName(int idx);
-  std::string getDynamicIntName(int idx);
-  std::string getDynamicStringName(int idx);
+  //! Parse the response messge from the server, and if it contains
+  //! an image, attempt to copy the image to the imagePlane. Return
+  //! true on success, false otherwise and fill in the error string.
+  bool renderOutputBuffer(dlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg);
 
-  float* getDynamicFloatValue(int idx);
-  int* getDynamicIntValue(int idx);
-  bool* getDynamicBoolValue(int idx);
-  std::string* getDynamicStringValue(int idx);
+  //! Return whether the dynamic knobs should be shown or not.
   bool getShowDynamic() const;
 
 private:
   // Private member variables
-
-  //! Our main client <--> server communications object
-  DLClientComms _comms;
-
-  std::vector<std::vector<float>> _inputs;
-  std::vector<int> _w;
-  std::vector<int> _h;
-  std::vector<int> _c;
-  std::vector<float> _result;
   
   std::string _host;
   bool _hostIsValid;
@@ -146,14 +124,9 @@ private:
   std::vector<std::vector<std::string>> _inputNames;
 
   bool _showDynamic;
-  std::vector<int> _dynamicBoolValues;
-  std::vector<int> _dynamicIntValues;
-  std::vector<float> _dynamicFloatValues;
-  std::vector<std::string> _dynamicStringValues;
-  std::vector<std::string> _dynamicBoolNames;
-  std::vector<std::string> _dynamicIntNames;
-  std::vector<std::string> _dynamicFloatNames;
-  std::vector<std::string> _dynamicStringNames;
+  
+  DLClientModelManager _modelManager;
+
   int _numNewKnobs;
 
 };
