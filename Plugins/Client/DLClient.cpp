@@ -198,7 +198,7 @@ bool DLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
     DLClientComms comms(_host, _port);
 
     if (!comms.isConnected()) {
-      errorMsg = "Could not connect to server.";
+      errorMsg = "Could not connect to server. Please check your host / port numbers.";
       return false;
     }
 
@@ -413,7 +413,7 @@ bool DLClient::processImage(const std::string& hostStr, int port,
       DLClientComms comms(_host, _port);
 
       if (!comms.isConnected()) {
-        errorMsg = "Could not connect to server.";
+        errorMsg = "Could not connect to server. Please check your host / port numbers.";
         return false;
       }
       // Try pull the model info into the responseWrapper
