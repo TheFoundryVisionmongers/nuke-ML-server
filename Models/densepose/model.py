@@ -35,10 +35,14 @@ class Model(BaseModel):
         self.name = 'DensePose'
 
         # Configuration and weights options
-        self.cfg_file = 'models/densepose/DensePose_ResNet101_FPN_s1x-e2e.yaml'
+        # By default, we use ResNet50 backbone architecture, you can switch to
+        # ResNet101 to increase quality if your GPU memory is higher than 6GB.
+        # To do so, you will need to download both .yaml and .pkl ResNet101 files
+        # then replace 'ResNet50' by 'ResNet101' for 'cfg_file' and 'weights' below.
+        self.cfg_file = 'models/densepose/DensePose_ResNet50_FPN_s1x-e2e.yaml'
+        self.weights = 'models/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl'
         self.default_cfg = copy.deepcopy(AttrDict(cfg)) # cfg from detectron.core.config
         self.densepose_cfg = AttrDict()
-        self.weights = 'models/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl'
         self.dummy_coco_dataset = dummy_datasets.get_coco_dataset()
 
         # Inference options
@@ -75,11 +79,9 @@ class Model(BaseModel):
         image = self.linear_to_srgb(image)*255.
         imcpy = image.copy()
 
-        # Switch to densepose workspace to keep correct blobs
-        workspace.SwitchWorkspace('densepose_workspace', True)
-
-        # Initialise the DLL model out of the configuration and weigts files
+        # Initialize the model out of the configuration and weights files
         if not hasattr(self, 'model'):
+            workspace.ResetWorkspace()
             # Reset to default config
             merge_cfg_from_cfg(self.default_cfg)
             # Load densepose configuration file
@@ -92,9 +94,13 @@ class Model(BaseModel):
             # There is a global config file for all detectron models (Densepose, Mask RCNN..)
             # Check if current global config file is correct for densepose
             if not dict_equal(self.densepose_cfg, cfg):
+                # Free memory of previous workspace
+                workspace.ResetWorkspace()
                 # Load densepose configuration file
                 merge_cfg_from_cfg(self.densepose_cfg)
-
+                assert_and_infer_cfg(cache_urls=False, make_immutable=False)
+                self.model = infer_engine.initialize_model_from_cfg(self.weights)
+                
         # Compute the image inference
         with c2_utils.NamedCudaScope(0):
             # image in BGR format for inference

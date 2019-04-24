@@ -16,8 +16,6 @@ def dict_equal(d1, d2):
         if k not in d2:
             return False
     for k in d2:
-        if k not in d1:
-            return False
         if type(d2[k]) not in (dict, list, AttrDict, np.ndarray):
             if d2[k] != d1[k]:
                 return False
@@ -28,7 +26,7 @@ def dict_equal(d1, d2):
             if type(d1[k]) != type(d2[k]):
                 return False
             else:
-                if type(d2[k]) == dict:
-                    dict_equal(d1[k], d2[k])
-                    continue
+                if type(d2[k]) == AttrDict or type(d2[k]) == dict:
+                    if(not dict_equal(d1[k], d2[k])):
+                        return False
     return True

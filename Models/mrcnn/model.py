@@ -35,10 +35,15 @@ class Model(BaseModel):
         self.name = 'Mask RCNN'
 
         # Configuration and weights options
-        self.cfg_file = 'models/mrcnn/e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml'
-        self.default_cfg = copy.deepcopy(AttrDict(cfg)) #cfg from detectron.core.config
-        self.mrcnn_cfg = AttrDict()
+        # By default, we use ResNet50 backbone architecture, you can switch to
+        # ResNet101 to increase quality if your GPU memory is higher than 8GB.
+        # To do so, you will need to download both .yaml and .pkl ResNet101 files
+        # then replace the below 'cfg_file' with the following:
+        # self.cfg_file = 'models/mrcnn/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml'
+        self.cfg_file = 'models/mrcnn/e2e_mask_rcnn_R-50-FPN_2x.yaml'
         self.weights = 'models/mrcnn/model_final.pkl'
+        self.default_cfg = copy.deepcopy(AttrDict(cfg)) # cfg from detectron.core.config
+        self.mrcnn_cfg = AttrDict()
         self.dummy_coco_dataset = dummy_datasets.get_coco_dataset()
 
         # Inference options
@@ -73,11 +78,9 @@ class Model(BaseModel):
         image = self.linear_to_srgb(image)*255.
         imcpy = image.copy()
 
-        # Switch to mrcnn worspace to keep correct blobs
-        workspace.SwitchWorkspace('mrcnn_workspace', True)
-
-        # Initialise the DLL model out of the configuration and weigts files
+        # Initialize the model out of the configuration and weights files
         if not hasattr(self, 'model'):
+            workspace.ResetWorkspace()
             # Reset to default config
             merge_cfg_from_cfg(self.default_cfg)
             # Load mask rcnn configuration file
@@ -90,8 +93,12 @@ class Model(BaseModel):
             # There is a global config file for all detectron models (Densepose, Mask RCNN..)
             # Check if current global config file is correct for mask rcnn
             if not dict_equal(self.mrcnn_cfg, cfg):
+                # Free memory of previous workspace
+                workspace.ResetWorkspace()
                 # Load mask rcnn configuration file
                 merge_cfg_from_cfg(self.mrcnn_cfg)
+                assert_and_infer_cfg(cache_urls=False, make_immutable=False)
+                self.model = infer_engine.initialize_model_from_cfg(self.weights)
 
         with c2_utils.NamedCudaScope(0):
             cls_boxes, cls_segms, cls_keyps, _ = infer_engine.im_detect_all(
