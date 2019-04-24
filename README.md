@@ -27,9 +27,11 @@ The plug-in works as follows:
 
 Please find installation instructions in [INSTALL.md](INSTALL.md).
 
-## Known issues
+## Known issue
 
-The GPU can run out of memory when doing model inference. To run DensePose or Mask-RCNN, it is necessary to have a GPU memory of at least 6GB.
+The GPU can run out of memory when doing model inference.
+
+To run DensePose or Mask-RCNN, it is necessary to have a GPU memory of at least 6GB.
 
 ## License
 
