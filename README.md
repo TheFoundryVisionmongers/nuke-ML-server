@@ -27,11 +27,15 @@ The plug-in works as follows:
 
 Please find installation instructions in [INSTALL.md](INSTALL.md).
 
+## Known issues
+
+The GPU can run out of memory when doing model inference. To run DensePose or Mask-RCNN, it is necessary to have a GPU memory of at least 6GB.
+
 ## License
 
 The source code is licensed under the Apache License, Version 2.0, found in [LICENSE](LICENSE).
 
-Two of the models (DensePose and Mask-RCNN) have individual licenses that can be found in their respective folders.
+Two of the models (Mask RCNN and DensePose) have individual licenses that can be found in their respective folders.
 
 This is strictly non-commercial.
 

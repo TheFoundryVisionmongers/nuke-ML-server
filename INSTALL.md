@@ -3,7 +3,8 @@
 The Nuke Deep Learning (DL) installation can be divided into compiling the DLClient Nuke node and installing the DLServer using Docker.
 
 **Requirements:**
-- NVIDIA GPU, Linux with Nuke installed
+- Linux with Nuke installed
+- NVIDIA GPU (Important: GPU memory must be at least 6GB)
 - CMake (minimum 3.10)
 - Protobuf (tested with 2.5.0 and 3.5.1)
 - Docker
@@ -103,15 +104,33 @@ sudo docker run --runtime=nvidia -v /absolute/path/to/nuke-DL-server/Models/:/wo
 
 ### Download configuration and weights files
 
-To be able to run inference on both Densepose and Mask-RCNN deep learning models, you need to download the configuration and weight files:
-- For Mask-RCNN:
-  - Configuration: [e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml](https://github.com/facebookresearch/Detectron/blob/master/configs/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_1x.yaml)
+To be able to run inference on both Densepose and Mask-RCNN deep learning models, you need to download the configuration and weight files.
+
+Depending on your GPU memory, you can use either a ResNet101 (GPU memory > 8GB) or ResNet50 (GPU memory > 6GB) backbone. The results with ResNet101 are slightly better.
+- Mask-RCNN requires ~7GB GPU RAM with ResNet101 and ~4.6GB with ResNet50.
+- DensePose requires ~5.7GB GPU RAM with ResNet101 and ~4.8GB with ResNet50.
+
+Note: Both models can be of different backbones, e.g. you can chose to have Mask-RCNN with ResNet50 and DensePose with ResNet101.
+
+Download your chosen configuration and weight files:
+- Mask-RCNN ResNet50:
+  - Configuration: [e2e_mask_rcnn_R-50-FPN_2x.yaml](https://github.com/facebookresearch/Detectron/blob/master/configs/12_2017_baselines/e2e_mask_rcnn_R-50-FPN_2x.yaml)
+  - Corresponding weights: [model_final.pkl](https://dl.fbaipublicfiles.com/detectron/35859007/12_2017_baselines/e2e_mask_rcnn_R-50-FPN_2x.yaml.01_49_07.By8nQcCH/output/train/coco_2014_train%3Acoco_2014_valminusminival/generalized_rcnn/model_final.pkl) (from the Detectron [Model Zoo](https://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md))
+  (`model_final.pkl` should be renamed `e2e_mask_rcnn_R-50-FPN_2x.pkl`)
+- OR Mask_RCNN ResNet101
+  - Configuration: [e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml](https://github.com/facebookresearch/Detectron/blob/master/configs/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml)
   - Correponding weights: [model_final.pkl](https://dl.fbaipublicfiles.com/detectron/35859745/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml.02_00_30.ESWbND2w/output/train/coco_2014_train%3Acoco_2014_valminusminival/generalized_rcnn/model_final.pkl) (from the Detectron [Model Zoo](https://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md))
-- For DensePose:
+  (`model_final.pkl` should be renamed `e2e_mask_rcnn_X-101-64x4d-FPN_2x.pkl`)
+- AND DensePose ResNet50:
+  - Configuration: [DensePose_ResNet50_FPN_s1x-e2e.yaml](https://github.com/facebookresearch/DensePose/blob/master/configs/DensePose_ResNet50_FPN_s1x-e2e.yaml)
+  - Corresponding weights: [DensePose_ResNet50_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
+- OR DensePose ResNet101:
   - Configuration: [DensePose_ResNet101_FPN_s1x-e2e.yaml](https://github.com/facebookresearch/DensePose/blob/master/configs/DensePose_ResNet101_FPN_s1x-e2e.yaml)
   - Corresponding weights: [DensePose_ResNet101_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
 
-And respectively move them to Models/mrcnn/ and Models/densepose/ folders.
+And respectively move them to `Models/mrcnn/` and `Models/densepose/` folders.
+
+The models expect a ResNet50 backbone by default. If you use ResNet101 backbone, you need to modify the .yaml and .pkl file names in `Models/mrcnn/model.py` and `Models/densepose/model.py`.
 
 ### Connect client and server
 
@@ -129,6 +148,6 @@ python server.py 55555
 
 ### Add your own model
 
-To implement your own model, you can create a new folder in the /Models directory with your model name. At the minimum, this folder needs to include an empty `__init__.py` file and a `model.py` file that contains a Model class inheriting from BaseModel.
+To implement your own model, you can create a new folder in the `/Models` directory with your model name. At the minimum, this folder needs to include an empty `__init__.py` file and a `model.py` file that contains a Model class inheriting from BaseModel.
 
 You can copy the simple [Models/blur/](Models/blur) model as a starting point, and implement your own model looking at the examples of blur, densepose and mrcnn.
