@@ -13,20 +13,15 @@ The Nuke Deep Learning (DL) installation can be divided into compiling the DLCli
 
 ### Install Protobuf
 
-Protobuf may be installed with a package manager, for example:
-```
-sudo yum install protobuf-devel
-```
+Following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the Protobuf GitHub repository, we recommend compiling Protobuf from source:
 
-However we recommend compiling it from source following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the protobuf github repository.
-
-Get Protobuf source file for C++, for instance version 3.5.1:
+First get Protobuf source file for C++, for instance version 3.5.1:
 ```
 wget https://github.com/protocolbuffers/protobuf/releases/download/v3.5.1/protobuf-cpp-3.5.1.tar.gz
 # Extract file in current directory
 tar -xzf protobuf-cpp-3.5.1.tar.gz
 ```
-To build and install the C++ Protocol Buffer runtime and the Protocol Buffer compiler (protoc), execute the following:
+Then build and install the C++ Protocol Buffer runtime and the Protocol Buffer compiler (protoc):
 ```
 cd protobuf-3.5.1
 ./configure
@@ -35,9 +30,14 @@ make check
 sudo make install
 sudo ldconfig # refresh shared library cache.
 ```
-Update LD_LIBRARY_PATH to point to protobuf:
+Update LD_LIBRARY_PATH to point to Protobuf:
 ```
 export LD_LIBRARY_PATH=/path/to/protobuf/:$LD_LIBRARY_PATH
+```
+
+Note: Instead of compiling it from source, Protobuf may alternatively be installed with a package manager, for example:
+```
+sudo yum install protobuf-devel
 ```
 
 ### Compile DLClient Nuke node
@@ -65,12 +65,12 @@ If not, verify that the NUKE_PATH is correctly set in this instance of Nuke (or 
 
 Install Docker:
 ```
-# Install Docker
+# Install the official docker-ce package
 sudo curl -sSL https://get.docker.com/ | sh
 # Start Docker
 sudo systemctl start docker
 ```
-Install nvidia-docker (NVIDIA GPU-enabled docker) for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository (For CentOS/RHEL, follow the instructions using the official `docker-ce` package).
+Install nvidia-docker for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section "CentOS 7 (docker-ce), RHEL 7.4/7.5 (docker-ce), Amazon Linux 1/2" of the repository, and not section "CentOS 7 (docker), RHEL 7.4/7.5 (docker)".
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
