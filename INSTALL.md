@@ -70,7 +70,7 @@ sudo curl -sSL https://get.docker.com/ | sh
 # Start Docker
 sudo systemctl start docker
 ```
-Install nvidia-docker for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section `CentOS 7 (docker-ce), RHEL 7.4/7.5 (docker-ce), Amazon Linux 1/2` of the repository, and not section `CentOS 7 (docker), RHEL 7.4/7.5 (docker)`.
+Install nvidia-docker for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section "CentOS 7 (**docker-ce**), RHEL 7.4/7.5 (**docker-ce**), Amazon Linux 1/2" of the repository.
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
