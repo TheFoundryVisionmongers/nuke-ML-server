@@ -70,7 +70,7 @@ sudo curl -sSL https://get.docker.com/ | sh
 # Start Docker
 sudo systemctl start docker
 ```
-Install nvidia-docker for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section "CentOS 7 (docker-ce), RHEL 7.4/7.5 (docker-ce), Amazon Linux 1/2" of the repository, and not section "CentOS 7 (docker), RHEL 7.4/7.5 (docker)".
+Install nvidia-docker for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section `CentOS 7 (docker-ce), RHEL 7.4/7.5 (docker-ce), Amazon Linux 1/2` of the repository, and not section `CentOS 7 (docker), RHEL 7.4/7.5 (docker)`.
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
@@ -95,7 +95,7 @@ If you get:
 /bin/nvidia-docker: line 34: /bin/docker: Permission denied
 /bin/nvidia-docker: line 34: /bin/docker: Success
 ```
-try to replace the previous command with:
+Try to replace the previous command with:
 ```
 sudo docker run --runtime=nvidia -v /absolute/path/to/nuke-DL-server/Models/:/workspace/dl-server/models:ro -it <docker_image_name>
 ```
