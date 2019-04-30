@@ -13,6 +13,8 @@ The Nuke Deep Learning (DL) installation can be divided into compiling the DLCli
 
 ### Install Protobuf
 
+Protocol Buffers (aka Protobuf) are an efficient way of serializing structured data - similar to XML, but faster and simpler. We use it to define, write, and read the data for our client<->server communication.
+
 Following the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) from the Protobuf GitHub repository, we recommend compiling Protobuf from source:
 
 First get Protobuf source file for C++, for instance version 3.5.1:
@@ -29,10 +31,6 @@ make
 make check
 sudo make install
 sudo ldconfig # refresh shared library cache.
-```
-Update LD_LIBRARY_PATH to point to Protobuf:
-```
-export LD_LIBRARY_PATH=/path/to/protobuf/:$LD_LIBRARY_PATH
 ```
 
 Note: Instead of compiling it from source, Protobuf may alternatively be installed with a package manager, for example:
@@ -63,6 +61,8 @@ If not, verify that the NUKE_PATH is correctly set in this instance of Nuke (or 
 
 ### Docker
 
+Docker provides a way to package and run an application in a securely isolated environment called a container. This container includes all the application dependencies and libraries. It ensures that the application works seamlessly inside the container in any system environment. We use docker to create a container that easily runs the DLServer.
+
 Install Docker:
 ```
 # Install the official docker-ce package
@@ -70,6 +70,8 @@ sudo curl -sSL https://get.docker.com/ | sh
 # Start Docker
 sudo systemctl start docker
 ```
+Nvidia Docker is a necessary plugin that enables Nvidia GPU-accelerated applications to run in Docker.
+
 Install nvidia-docker for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section "CentOS 7 (**docker-ce**), RHEL 7.4/7.5 (**docker-ce**), Amazon Linux 1/2" of the repository.
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
