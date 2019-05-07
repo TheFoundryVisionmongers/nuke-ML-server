@@ -1,6 +1,6 @@
-# Python-based Deep Learning Frame Server for Nuke
+# Python-based Machine Learning Frame Server for Nuke
 
-This repository contains the client-server system enabling Deep Learning (DL) inference in Nuke. This work is split into two parts: a client Nuke plug-in [Plugins/Client/](Plugins/Client) and the Python frame server [Plugins/Server](Plugins/Server).
+This repository contains the client-server system enabling Machine Learning (ML) inference in Nuke. This work is split into two parts: a client Nuke plug-in [Plugins/Client/](Plugins/Client) and the Python frame server [Plugins/Server](Plugins/Server).
 
 The following models are provided as examples:
 - blur: a simple gaussian blur operation
@@ -14,13 +14,13 @@ The following models are provided as examples:
 
 ## Introduction
 
-The Deep Learning (DL) plug-in connects Nuke to a Python server to apply DL models to images.
+The Machine Learning (ML) plug-in connects Nuke to a Python server to apply ML models to images.
 The plug-in works as follows:
 - The Nuke node can connect to a server given an ip address and port,
-- The Python server responds with the list of available Deep Learning (DL) models and options,
+- The Python server responds with the list of available Machine Learning (ML) models and options,
 - The Nuke node displays the models in an enumeration knob, from which the user can choose,
 - On every renderStripe call, the current image and model options are sent from the Nuke node to the server,
-- The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a deep learning model, or just some other image processing code,
+- The server does an inference on the image using the chosen model/options. This inference can be an actual inference operation of a machine learning model, or just some other image processing code,
 - The resulting image is sent back to the Nuke node.
 
 ## Installation

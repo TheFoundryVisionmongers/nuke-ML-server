@@ -1,6 +1,6 @@
-# Installing Nuke Deep Learning Plug-in
+# Installing Nuke Machine Learning Plug-in
 
-The Nuke Deep Learning (DL) installation can be divided into compiling the DLClient Nuke node and installing the DLServer using Docker.
+The Nuke Machine Learning (ML) installation can be divided into compiling the MLClient Nuke node and installing the MLServer using Docker.
 
 **Requirements:**
 - Linux with Nuke installed
@@ -38,30 +38,30 @@ Note: Instead of compiling it from source, Protobuf may alternatively be install
 sudo yum install protobuf-devel
 ```
 
-### Compile DLClient Nuke node
+### Compile MLClient Nuke node
 
-If not already cloned, fetch the `nuke-DL-server` repository:
+If not already cloned, fetch the `nuke-ML-server` repository:
 ```
-git clone https://github.com/TheFoundryVisionmongers/nuke-DL-server
+git clone https://github.com/TheFoundryVisionmongers/nuke-ML-server
 ```
-Execute the commands below to compile the client DLClient.so plug-in, setting the NUKE_INSTALL_PATH to point to the folder of the desired Nuke version:
+Execute the commands below to compile the client MLClient.so plug-in, setting the NUKE_INSTALL_PATH to point to the folder of the desired Nuke version:
 ```
 mkdir build && cd build
 cmake -DNUKE_INSTALL_PATH="/path/to/Nuke11.3v1" ..
 make
 ```
-The DLClient.so plug-in will now be in the 'build/Plugins/Client' folder. Before it can be used, Nuke needs to know where it lives. One way to do this is to update the NUKE_PATH environment variable to point to the DLClient.so plug-in (This can be skipped if it was moved to the root of your ~/.nuke folder, or the path was added in Nuke through Python):
+The MLClient.so plug-in will now be in the 'build/Plugins/Client' folder. Before it can be used, Nuke needs to know where it lives. One way to do this is to update the NUKE_PATH environment variable to point to the MLClient.so plug-in (This can be skipped if it was moved to the root of your ~/.nuke folder, or the path was added in Nuke through Python):
 ```
 export NUKE_PATH=/path/to/lib/:$NUKE_PATH
 ```
-At that point, after opening Nuke and doing an `Update [All plugins]`, the `DLClient` node should be available.
+At that point, after opening Nuke and doing an `Update [All plugins]`, the `MLClient` node should be available.
 If not, verify that the NUKE_PATH is correctly set in this instance of Nuke (or simply export the NUKE_PATH in the ~/.bashrc)
 
 ## Installing the server
 
 ### Install Docker
 
-Docker provides a way to package and run an application in a securely isolated environment called a container. This container includes all the application dependencies and libraries. It ensures that the application works seamlessly inside the container in any system environment. We use docker to create a container that easily runs the DLServer.
+Docker provides a way to package and run an application in a securely isolated environment called a container. This container includes all the application dependencies and libraries. It ensures that the application works seamlessly inside the container in any system environment. We use docker to create a container that easily runs the MLServer.
 
 Install Docker:
 ```
@@ -80,17 +80,17 @@ Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 sudo docker pull nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 # Build the docker image on top of the base image
 cd Plugins/Server/
-# Choose your own label for <docker_image_name>, it must be lowercase. e.g. dlserver.
+# Choose your own label for <docker_image_name>, it must be lowercase. e.g. mlserver.
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 
 Create a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
 
 ```
-sudo nvidia-docker run -v /absolute/path/to/nuke-DL-server/Models/:/workspace/dl-server/models:ro -it <docker_image_name>
+sudo nvidia-docker run -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
 ```
 
-Note: the `-v` (volume) options links your nuke-DL-server/Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-DL-server/Models/`, leave the `/workspace/dl-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
+Note: the `-v` (volume) options links your nuke-ML-server/Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-ML-server/Models/`, leave the `/workspace/ml-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
 
 If you get:
 ```
@@ -99,7 +99,7 @@ If you get:
 ```
 Try to replace the previous command with:
 ```
-sudo docker run --runtime=nvidia -v /absolute/path/to/nuke-DL-server/Models/:/workspace/dl-server/models:ro -it <docker_image_name>
+sudo docker run --runtime=nvidia -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
 ```
 
 ## Getting started
@@ -139,12 +139,12 @@ Finally to connect the Python server with the Nuke client:
 ```
 hostname -I
 ```
-2. In Nuke, set the DLClient node host to the container ip address,
+2. In Nuke, set the MLClient node host to the container ip address,
 3. In the container, launch the server and start listening on port 55555:
 ```
 python server.py 55555
 ```
-4. In Nuke, click on the DLClient connect button, you should have the three models available.
+4. In Nuke, click on the MLClient connect button, you should have the three models available.
 
 ### Add your own model
 

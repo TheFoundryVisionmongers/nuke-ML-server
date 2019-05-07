@@ -3,41 +3,41 @@
 
 #include <cstring>
 
-#include "DLClient.h"
+#include "MLClient.h"
 
-const char* const DLClient::kClassName = "DLClient";
-const char* const DLClient::kHelpString = 
-  "Connects to a Python server for Deep Learning inference.\n"
+const char* const MLClient::kClassName = "MLClient";
+const char* const MLClient::kHelpString = 
+  "Connects to a Python server for Machine Learning inference.\n"
   "This is strictly non-commercial.";
 
-const char* const DLClient::kDefaultHostName = "172.17.0.2";
-const int         DLClient::kDefaultPortNumber = 55555;
+const char* const MLClient::kDefaultHostName = "172.17.0.2";
+const int         MLClient::kDefaultPortNumber = 55555;
 
-const DD::Image::ChannelSet DLClient::kDefaultChannels = DD::Image::Mask_RGB;
-const int DLClient::kDefaultNumberOfChannels = DLClient::kDefaultChannels.size();
+const DD::Image::ChannelSet MLClient::kDefaultChannels = DD::Image::Mask_RGB;
+const int MLClient::kDefaultNumberOfChannels = MLClient::kDefaultChannels.size();
 
 using namespace DD::Image;
 
 /*! This is a function that creates an instance of the operator, and is
    needed for the Iop::Description to work.
  */
-static Iop* DLClientCreate(Node* node)
+static Iop* MLClientCreate(Node* node)
 {
-  return new DLClient(node);
+  return new MLClient(node);
 }
 
 /*! The Iop::Description is how NUKE knows what the name of the operator is,
    how to create one, and the menu item to show the user. The menu item may be
    0 if you do not want the operator to be visible.
  */
-const Iop::Description DLClient::description(DLClient::kClassName, 0, DLClientCreate);
+const Iop::Description MLClient::description(MLClient::kClassName, 0, MLClientCreate);
 
 //! Constructor. Initialize user controls to their default values.
-DLClient::DLClient(Node* node)
+MLClient::MLClient(Node* node)
 : DD::Image::PlanarIop(node)
-, _host(DLClient::kDefaultHostName)
+, _host(MLClient::kDefaultHostName)
 , _hostIsValid(true)
-, _port(DLClient::kDefaultPortNumber)
+, _port(MLClient::kDefaultPortNumber)
 , _portIsValid(true)
 , _chosenModel(0)
 , _modelSelected(false)
@@ -45,10 +45,10 @@ DLClient::DLClient(Node* node)
 , _numNewKnobs(0)
 { }
 
-DLClient::~DLClient() {}
+MLClient::~MLClient() {}
 
 //! The maximum number of input connections the operator can have.
-int DLClient::maximum_inputs() const
+int MLClient::maximum_inputs() const
 {
   if (haveValidModelInfo() && _modelSelected) {
     return _numInputs[_chosenModel];
@@ -59,7 +59,7 @@ int DLClient::maximum_inputs() const
 }
 
 //! The minimum number of input connections the operator can have.
-int DLClient::minimum_inputs() const
+int MLClient::minimum_inputs() const
 { 
   if (haveValidModelInfo() && _modelSelected) {
     return _numInputs[_chosenModel];
@@ -73,7 +73,7 @@ int DLClient::minimum_inputs() const
     in the DAG window. This should be a very short string, one letter
     ideally. Return null or an empty string to not label the arrow.
 */
-const char* DLClient::input_label(int input, char* buffer) const
+const char* MLClient::input_label(int input, char* buffer) const
 {
   if (!haveValidModelInfo() || !_modelSelected) {
     return "";
@@ -88,22 +88,22 @@ const char* DLClient::input_label(int input, char* buffer) const
   }
 }
 
-bool DLClient::useStripes() const
+bool MLClient::useStripes() const
 {
   return false;
 }
 
-bool DLClient::renderFullPlanes() const
+bool MLClient::renderFullPlanes() const
 {
   return true;
 }
 
-DLClientModelManager& DLClient::getModelManager()
+MLClientModelManager& MLClient::getModelManager()
 {
   return _modelManager;
 }
 
-void DLClient::_validate(bool forReal)
+void MLClient::_validate(bool forReal)
 {
   // Try connect to the server, erroring if it can't connect.
   std::string connectErrorMsg;
@@ -114,7 +114,7 @@ void DLClient::_validate(bool forReal)
   copy_info();
 }
 
-void DLClient::getRequests(const Box& box, const ChannelSet& channels, int count, RequestOutput &reqData) const
+void MLClient::getRequests(const Box& box, const ChannelSet& channels, int count, RequestOutput &reqData) const
 {
   // request all input input as we are going to search the whole input area
   for (int i = 0, endI = getInputs().size(); i < endI; i++) {
@@ -123,7 +123,7 @@ void DLClient::getRequests(const Box& box, const ChannelSet& channels, int count
   }
 }
 
-void DLClient::renderStripe(ImagePlane& imagePlane)
+void MLClient::renderStripe(ImagePlane& imagePlane)
 {
   // Before doing any rendering, check if we've aborted.
   // Note that it's perfectly fine to abort here, it usually
@@ -131,7 +131,7 @@ void DLClient::renderStripe(ImagePlane& imagePlane)
   // or switched between Viewers.
   if (aborted() || cancelled()) {
     // The following print is commented out as it happens too frequently
-    // DLClientComms::Vprint("Aborted before processing images.");
+    // MLClientComms::Vprint("Aborted before processing images.");
     return;
   }
 
@@ -140,7 +140,7 @@ void DLClient::renderStripe(ImagePlane& imagePlane)
     // Set up our error string
     std::string errorMsg;
     // Set up our incoming response message structure.
-    dlserver::RespondWrapper responseWrapper;
+    mlserver::RespondWrapper responseWrapper;
     // Wrap up our image data to be sent, send it, and
     // retrieve the response.
     if(!processImage(_host, _port, responseWrapper, errorMsg)) {
@@ -148,7 +148,7 @@ void DLClient::renderStripe(ImagePlane& imagePlane)
       if (aborted() || cancelled()) {
         // errorMsg should be filled with where / when the
         // processImage() call was aborted.
-        DLClientComms::Vprint(errorMsg);
+        MLClientComms::Vprint(errorMsg);
         return;
       }
       // Display the error in Nuke if it was some systematic issue.
@@ -159,7 +159,7 @@ void DLClient::renderStripe(ImagePlane& imagePlane)
     // response, so let's try to extract an image from it and
     // place it into our imagePlane.
     if (!renderOutputBuffer(responseWrapper, imagePlane, errorMsg)) {
-      DLClientComms::Vprint(errorMsg);
+      MLClientComms::Vprint(errorMsg);
       error(errorMsg.c_str());
       return;
     }
@@ -169,7 +169,7 @@ void DLClient::renderStripe(ImagePlane& imagePlane)
 
   // Check again if we hit abort during processing
   if (aborted() || cancelled()) {
-    DLClientComms::Vprint("Aborted without processing image.");
+    MLClientComms::Vprint("Aborted without processing image.");
     return;
   }
 
@@ -178,7 +178,7 @@ void DLClient::renderStripe(ImagePlane& imagePlane)
   input0().fetchPlane(imagePlane);
 }
 
-bool DLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
+bool MLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
 {
   // Before trying to connect, ensure ports and hostname are valid.
   if (!_portIsValid) {
@@ -191,11 +191,11 @@ bool DLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
   }
 
   // Actually try to connect, and pull model info
-  dlserver::RespondWrapper responseWrapper;
+  mlserver::RespondWrapper responseWrapper;
   {
     // Local scope our comms object so that the connection is torn
     // down after we have our data.
-    DLClientComms comms(_host, _port);
+    MLClientComms comms(_host, _port);
 
     if (!comms.isConnected()) {
       errorMsg = "Could not connect to server. Please check your host / port numbers.";
@@ -218,16 +218,16 @@ bool DLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
   std::stringstream ss;
   ss << "Server can serve " << std::to_string(numModels) << " models" << std::endl;
   ss << "-----------------------------------------------";
-  DLClientComms::Vprint(ss.str());
+  MLClientComms::Vprint(ss.str());
   for (int i = 0; i < numModels; i++) {
-    dlserver::Model m;
+    mlserver::Model m;
     m = responseWrapper.r1().models(i);
     modelNames.push_back(m.label());
     _serverModels.push_back(m);
     _numInputs.push_back(m.inputs_size());
     std::vector<std::string> names;
     for (int j = 0; j < m.inputs_size(); j++) {
-      dlserver::ImagePrototype p;
+      mlserver::ImagePrototype p;
       p = m.inputs(j);
       names.push_back(p.name());
     }
@@ -253,7 +253,7 @@ bool DLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
   _showDynamic = true;
 
   // Update the dynamic knobs
-  const dlserver::Model m = _serverModels[_chosenModel];
+  const mlserver::Model m = _serverModels[_chosenModel];
   _modelManager.parseOptions(m);
   _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
 
@@ -264,13 +264,13 @@ bool DLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
 //! Return whether we successfully managed to pull model
 //! info from the server at some time in the past, and the selected model is
 //! valid.
-bool DLClient::haveValidModelInfo() const
+bool MLClient::haveValidModelInfo() const
 {
   return _serverModels.size() > 0 && _serverModels.size() > _chosenModel;
 }
 
-bool DLClient::processImage(const std::string& hostStr, int port,
-  dlserver::RespondWrapper& responseWrapper, std::string& errorMsg)
+bool MLClient::processImage(const std::string& hostStr, int port,
+  mlserver::RespondWrapper& responseWrapper, std::string& errorMsg)
 {
   // Check if Nuke has aborted, making it impossible to pull images.
   if (aborted()) {
@@ -310,8 +310,8 @@ bool DLClient::processImage(const std::string& hostStr, int port,
     const Box imageFormat = info().format();
 
     // Create inference message
-    dlserver::RequestInference* requestInference = new dlserver::RequestInference;
-    dlserver::Model* m = new dlserver::Model(_serverModels[_chosenModel]);
+    mlserver::RequestInference* requestInference = new mlserver::RequestInference;
+    mlserver::Model* m = new mlserver::Model(_serverModels[_chosenModel]);
     _modelManager.updateOptions(*m);
     requestInference->set_allocated_model(m);
 
@@ -367,7 +367,7 @@ bool DLClient::processImage(const std::string& hostStr, int port,
       }
 
       // Set up our message
-      dlserver::Image* image = requestInference->add_images();
+      mlserver::Image* image = requestInference->add_images();
       image->set_width(imageFormat.w());
       image->set_height(imageFormat.h());
       image->set_channels(kDefaultNumberOfChannels);
@@ -410,7 +410,7 @@ bool DLClient::processImage(const std::string& hostStr, int port,
     {
       // Local scope our comms object so that the connection is torn
       // down after we have our data.
-      DLClientComms comms(_host, _port);
+      MLClientComms comms(_host, _port);
 
       if (!comms.isConnected()) {
         errorMsg = "Could not connect to server. Please check your host / port numbers.";
@@ -425,7 +425,7 @@ bool DLClient::processImage(const std::string& hostStr, int port,
   }
   catch (...) {
     errorMsg = "Error processing messages.";
-    DLClientComms::Vprint(errorMsg);
+    MLClientComms::Vprint(errorMsg);
     return false;
   }
 
@@ -433,7 +433,7 @@ bool DLClient::processImage(const std::string& hostStr, int port,
   return true;
 }
 
-bool DLClient::renderOutputBuffer(dlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg)
+bool MLClient::renderOutputBuffer(mlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg)
 {
   // Sanity check, make sure the response actually contains an image.
   if(!responseWrapper.has_r2() || responseWrapper.r2().num_images() == 0) {
@@ -449,7 +449,7 @@ bool DLClient::renderOutputBuffer(dlserver::RespondWrapper& responseWrapper, DD:
   }
 
   // Get the resulting image data
-  const dlserver::Image &imageMessage = responseWrapper.r2().images(0);
+  const mlserver::Image &imageMessage = responseWrapper.r2().images(0);
 
   // Verify that the image passed back to us is of the same format as the input
   // format (note, the bounds of the imagePlane may be different, e.g. if there's
@@ -499,44 +499,44 @@ bool DLClient::renderOutputBuffer(dlserver::RespondWrapper& responseWrapper, DD:
   return true;
 }
 
-void DLClient::addDynamicKnobs(void* p, Knob_Callback f)
+void MLClient::addDynamicKnobs(void* p, Knob_Callback f)
 {
-  if (((DLClient *)p)->getShowDynamic()) {
-    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfInts(); i++) {
-      std::string name = ((DLClient *)p)->getModelManager().getDynamicIntName(i);
-      std::string label = ((DLClient *)p)->getModelManager().getDynamicIntName(i);
-      Int_knob(f, ((DLClient *)p)->getModelManager().getDynamicIntValue(i), name.c_str(), label.c_str());
+  if (((MLClient *)p)->getShowDynamic()) {
+    for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfInts(); i++) {
+      std::string name = ((MLClient *)p)->getModelManager().getDynamicIntName(i);
+      std::string label = ((MLClient *)p)->getModelManager().getDynamicIntName(i);
+      Int_knob(f, ((MLClient *)p)->getModelManager().getDynamicIntValue(i), name.c_str(), label.c_str());
       Newline(f, " ");
     }
-    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfFloats(); i++) {
-      std::string name = ((DLClient *)p)->getModelManager().getDynamicFloatName(i);
-      std::string label = ((DLClient *)p)->getModelManager().getDynamicFloatName(i);
-      Float_knob(f, ((DLClient *)p)->getModelManager().getDynamicFloatValue(i), name.c_str(), label.c_str());
+    for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfFloats(); i++) {
+      std::string name = ((MLClient *)p)->getModelManager().getDynamicFloatName(i);
+      std::string label = ((MLClient *)p)->getModelManager().getDynamicFloatName(i);
+      Float_knob(f, ((MLClient *)p)->getModelManager().getDynamicFloatValue(i), name.c_str(), label.c_str());
       ClearFlags(f, Knob::SLIDER);
       Newline(f, " ");
     }
-    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfBools(); i++) {
-      std::string name = ((DLClient *)p)->getModelManager().getDynamicBoolName(i);
-      std::string label = ((DLClient *)p)->getModelManager().getDynamicBoolName(i);
-      Bool_knob(f, ((DLClient *)p)->getModelManager().getDynamicBoolValue(i), name.c_str(), label.c_str());
+    for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfBools(); i++) {
+      std::string name = ((MLClient *)p)->getModelManager().getDynamicBoolName(i);
+      std::string label = ((MLClient *)p)->getModelManager().getDynamicBoolName(i);
+      Bool_knob(f, ((MLClient *)p)->getModelManager().getDynamicBoolValue(i), name.c_str(), label.c_str());
       Newline(f, " ");
     }
-    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfStrings(); i++) {
-      std::string name = ((DLClient *)p)->getModelManager().getDynamicStringName(i);
-      std::string label = ((DLClient *)p)->getModelManager().getDynamicStringName(i);
-      String_knob(f, ((DLClient *)p)->getModelManager().getDynamicStringValue(i), name.c_str(), label.c_str());
+    for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfStrings(); i++) {
+      std::string name = ((MLClient *)p)->getModelManager().getDynamicStringName(i);
+      std::string label = ((MLClient *)p)->getModelManager().getDynamicStringName(i);
+      String_knob(f, ((MLClient *)p)->getModelManager().getDynamicStringValue(i), name.c_str(), label.c_str());
       Newline(f, " ");
     }
-    for (int i = 0; i < ((DLClient *)p)->getModelManager().getNumOfButtons(); i++) {
-      std::string name = ((DLClient *)p)->getModelManager().getDynamicButtonName(i);
-      std::string label = ((DLClient *)p)->getModelManager().getDynamicButtonName(i);
+    for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfButtons(); i++) {
+      std::string name = ((MLClient *)p)->getModelManager().getDynamicButtonName(i);
+      std::string label = ((MLClient *)p)->getModelManager().getDynamicButtonName(i);
       Button(f, name.c_str(), label.c_str());
       Newline(f, " ");
     }
   }
 }
 
-void DLClient::knobs(Knob_Callback f)
+void MLClient::knobs(Knob_Callback f)
 {
   Text_knob(f, "This plugin is strictly non-commercial.");
   Divider(f, "  ");
@@ -553,14 +553,14 @@ void DLClient::knobs(Knob_Callback f)
   SetFlags(f, Knob::SAVE_MENU);
 
   if (!f.makeKnobs()) {
-    DLClient::addDynamicKnobs(this->firstOp(), f);
+    MLClient::addDynamicKnobs(this->firstOp(), f);
   }
 }
 
-int DLClient::knob_changed(Knob* knobChanged)
+int MLClient::knob_changed(Knob* knobChanged)
 {
   if (knobChanged->is("host")) {
-    if (!DLClientComms::ValidateHostName(_host)) {
+    if (!MLClientComms::ValidateHostName(_host)) {
       error("Please insert a valid host ipv4 or ipv6 address.");
       _hostIsValid = false;
     }
@@ -592,7 +592,7 @@ int DLClient::knob_changed(Knob* knobChanged)
   if (knobChanged->is("models")) {
     // Sanity check that some models exist
     if(haveValidModelInfo()) {
-      const dlserver::Model m = _serverModels[_chosenModel];
+      const mlserver::Model m = _serverModels[_chosenModel];
       _modelManager.parseOptions(m);
       _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
     }
@@ -607,7 +607,7 @@ int DLClient::knob_changed(Knob* knobChanged)
       // Set up our error string
       std::string errorMsg;
       // Set up our incoming response message structure.
-      dlserver::RespondWrapper responseWrapper;
+      mlserver::RespondWrapper responseWrapper;
       // Wrap up our image data to be sent, send it, and
       // retrieve the response.
       if(!processImage(_host, _port, responseWrapper, errorMsg)) {
@@ -616,13 +616,13 @@ int DLClient::knob_changed(Knob* knobChanged)
 
       // Get the resulting general data
       if (responseWrapper.has_r2() && responseWrapper.r2().num_objects() > 0) {
-        const dlserver::FieldValuePairAttrib object = responseWrapper.r2().objects(0);
+        const mlserver::FieldValuePairAttrib object = responseWrapper.r2().objects(0);
         // Run script in Nuke if object called PythonScript is created
         if (object.name() == "PythonScript") {
           // Check object has string_attributes
           if (object.values_size() != 0
             && object.values(0).string_attributes_size() != 0) {
-            dlserver::StringAttrib pythonScript = object.values(0).string_attributes(0);
+            mlserver::StringAttrib pythonScript = object.values(0).string_attributes(0);
             // Run Python Script in Nuke
             if (pythonScript.values_size() != 0) {
               std::cout << " cmd=\n" << pythonScript.values(0) << "\n" << std::flush;
@@ -641,17 +641,17 @@ int DLClient::knob_changed(Knob* knobChanged)
 }
 
 //! Return the name of the class.
-const char* DLClient::Class() const
+const char* MLClient::Class() const
 { 
-  return DLClient::kClassName;
+  return MLClient::kClassName;
 }
 
-const char* DLClient::node_help() const
+const char* MLClient::node_help() const
 { 
-  return DLClient::kHelpString;
+  return MLClient::kHelpString;
 }
 
-bool DLClient::getShowDynamic() const
+bool MLClient::getShowDynamic() const
 { 
   return _showDynamic && haveValidModelInfo();
 }

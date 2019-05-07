@@ -12,7 +12,7 @@ Models/fastImageProcessingParameterized/
 Models/pwcNet/
 Models/styleTransfer/
 
-# Ignore all Plugins but DLClient and DLServer
+# Ignore all Plugins but MLClient and MLServer
 Plugins/Denoise/
 Plugins/Init/
 Plugins/Process/

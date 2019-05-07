@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package dlserver;
+package mlserver;
 
 message RequestWrapper {
 	optional bool info = 1;

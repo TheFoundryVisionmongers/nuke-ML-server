@@ -1,8 +1,8 @@
 // Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
 // This is strictly non-commercial.
 
-#ifndef DLCLIENTCOMMS_H
-#define DLCLIENTCOMMS_H
+#ifndef MLCLIENTCOMMS_H
+#define MLCLIENTCOMMS_H
 
 // Includes for sockets and protobuf
 #include <netdb.h>
@@ -11,14 +11,14 @@
 using byte = unsigned char;
 
 
-//! The Deep Learning (DL) Client plug-in connects Nuke to a Python server to apply DL models to images.
+//! The Machine Learning (ML) Client plug-in connects Nuke to a Python server to apply ML models to images.
 /*! This plug-in can connect to a server (given a host and port), which responds
-    with a list of available Deep Learning (DL) models and options.
+    with a list of available Machine Learning (ML) models and options.
     On every /a renderStripe() call, the image and model options are sent from Nuke to the server,
-    there the server can process the image by doing Deep Learning inference,
+    there the server can process the image by doing Machine Learning inference,
     finally the resulting image is sent back to Nuke.
 */
-class DLClientComms
+class MLClientComms
 {
 public:
   // Static consts
@@ -34,10 +34,10 @@ public:
   //! Constructor. Initialize user controls to their default values, then try to
   //! connect to the specified host / port. Following the c-tor, you can test for
   //! a valid connection by calling isConnected().
-  DLClientComms(const std::string& hostStr, int port);
+  MLClientComms(const std::string& hostStr, int port);
 
   //! Destructor. Tear down any existing connection.
-  virtual ~DLClientComms();
+  virtual ~MLClientComms();
 
 public:
   // Public static methods for client-server communication
@@ -56,11 +56,11 @@ public:
 
   //! Function for discovering & negotiating the available models and their parameters.
   //! Return true on success, false otherwise with the errorMsg filled in.
-  bool sendInfoRequestAndReadInfoResponse(dlserver::RespondWrapper& responseWrapper, std::string& errorMsg);
+  bool sendInfoRequestAndReadInfoResponse(mlserver::RespondWrapper& responseWrapper, std::string& errorMsg);
 
   //! Function for performing the inference on a selected model.
   //! Return true on success, false otherwise with the errorMsg filled in.
-  bool sendInferenceRequestAndReadInferenceResponse(dlserver::RequestInference& requestInference, dlserver::RespondWrapper& responseWrapper, std::string& errorMsg);
+  bool sendInferenceRequestAndReadInferenceResponse(mlserver::RequestInference& requestInference, mlserver::RespondWrapper& responseWrapper, std::string& errorMsg);
 
 private:
   // Private client / server comms functions
@@ -81,23 +81,23 @@ private:
 
   //! Retrieve the response from the server and store it in responseWrapper, to be parsed
   //! elsewhere. Return true on success, false otherwise.
-  bool readInfoResponse(dlserver::RespondWrapper& responseWrapper);
+  bool readInfoResponse(mlserver::RespondWrapper& responseWrapper);
 
   //! Send a messaged image to to the server. Return true on success, false otherwise.
-  bool sendInferenceRequest(dlserver::RequestInference& requestInference);
+  bool sendInferenceRequest(mlserver::RequestInference& requestInference);
 
   //! Marshall the returned image into a float buffer of the original image size. Note, this
   //! expects the size of result to have been set to the same size as the image that was
   //! previously sent to the server. Return true on success, false otherwise.
-  bool readInferenceResponse(dlserver::RespondWrapper& responseWrapper);
+  bool readInferenceResponse(mlserver::RespondWrapper& responseWrapper);
 
   //! Pull the data after determining the size 'siz' from the header.
   //! Helper to the above 'readInfoResponse' function.
-  bool readInfoResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& responseWrapper);
+  bool readInfoResponse(google::protobuf::uint32 siz, mlserver::RespondWrapper& responseWrapper);
 
   //! Pull the data after determining the size 'siz' from the header.
   //! Helper to the above 'readInferenceResponse' function.
-  bool readInferenceResponse(google::protobuf::uint32 siz, dlserver::RespondWrapper& responseWrapper);
+  bool readInferenceResponse(google::protobuf::uint32 siz, mlserver::RespondWrapper& responseWrapper);
 
   //! Close the current connection if one is open.
   void closeConnection();
@@ -116,4 +116,4 @@ private:
   int _socket;
 };
 
-#endif // DLCLIENTCOMMS_H
+#endif // MLCLIENTCOMMS_H

@@ -15,7 +15,7 @@ from message_pb2 import *
 import detectron.utils.c2 as c2_utils
 c2_utils.import_detectron_ops() 
 
-class DLTCPServer(SocketServer.TCPServer):
+class MLTCPServer(SocketServer.TCPServer):
     def __init__(self, server_address, handler_class, auto_bind=True):
         self.verbose = True
         self.available_models = next(os.walk('models'))[1]
@@ -226,14 +226,14 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             print('Server -> ' + string)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Deep Learning inference server.')
+    parser = argparse.ArgumentParser(description='Machine Learning inference server.')
     parser.add_argument('port', type=int, help='Port number for the server to listen to.')
     args = parser.parse_args()
 
     # Get the current hostname of the server
     server_hostname = socket.gethostbyname(socket.gethostname())
     # Create the server
-    server = DLTCPServer((server_hostname, args.port), ImageProcessTCPHandler, False)
+    server = MLTCPServer((server_hostname, args.port), ImageProcessTCPHandler, False)
 
     # Bind and activate the server
     server.allow_reuse_address = True 

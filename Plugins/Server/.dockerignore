@@ -4,9 +4,9 @@
 .dockerignore
 Dockerfile
 
-#all the Nuke DLClient Node files
+#all the Nuke MLClient Node files
 compile
-DLClient*
+MLClient*
 
 # the other unused model
 *.pb

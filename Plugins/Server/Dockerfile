@@ -52,6 +52,6 @@ RUN apt update && apt install wget
 RUN bash /workspace/densepose/DensePoseData/get_densepose_uv.sh
 RUN mv UV_data /workspace/densepose/DensePoseData/
 
-WORKDIR /workspace/dl-server
-# Copy your current folder to the docker image /workspace/dl-server/ folder
+WORKDIR /workspace/ml-server
+# Copy your current folder to the docker image /workspace/ml-server/ folder
 COPY . .

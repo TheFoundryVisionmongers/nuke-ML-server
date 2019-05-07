@@ -1,8 +1,8 @@
 // Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
 // This is strictly non-commercial.
 
-#ifndef DLCLIENT_H
-#define DLCLIENT_H
+#ifndef MLCLIENT_H
+#define MLCLIENT_H
 
 // Standard plug-in include files.
 #include "DDImage/PlanarIop.h"
@@ -14,17 +14,17 @@
 #include <DDImage/Enumeration_KnobI.h>
 
 // Local include files
-#include "DLClientComms.h"
-#include "DLClientModelManager.h"
+#include "MLClientComms.h"
+#include "MLClientModelManager.h"
 
-//! The Deep Learning (DL) Client plug-in connects Nuke to a Python server to apply DL models to images.
+//! The Machine Learning (ML) Client plug-in connects Nuke to a Python server to apply ML models to images.
 /*! This plug-in can connect to a server (given a host and port), which responds
-    with a list of available Deep Learning (DL) models and options.
+    with a list of available Machine Learning (ML) models and options.
     On every /a renderStripe() call, the image and model options are sent from Nuke to the server,
-    there the server can process the image by doing Deep Learning inference,
+    there the server can process the image by doing Machine Learning inference,
     finally the resulting image is sent back to Nuke.
 */
-class DLClient : public DD::Image::PlanarIop
+class MLClient : public DD::Image::PlanarIop
 {
 
 public:
@@ -41,8 +41,8 @@ private:
 
 public:
   //! Constructor. Initialize user controls to their default values.
-  DLClient(Node* node);
-  virtual ~DLClient();
+  MLClient(Node* node);
+  virtual ~MLClient();
 
 public:
   // DDImage::Iop overrides
@@ -65,7 +65,7 @@ public:
 
   /*! This function is called by Nuke for processing the current image.
       The image and model options are sent from Nuke to the server,
-      there the server can process the image by doing Deep Learning inference,
+      there the server can process the image by doing Machine Learning inference,
       finally the resulting image is sent back to Nuke.
       The function tries to reconnect if no connection is set.
   */
@@ -82,7 +82,7 @@ public:
   const char* Class() const;
   const char* node_help() const;
 
-  DLClientModelManager& getModelManager();
+  MLClientModelManager& getModelManager();
 
 private:
   // Private functions for talking to the server
@@ -97,12 +97,12 @@ private:
 
   //! Connect to server, then send inference request and read inference response.
   //! Return true on success, false otherwise filling in the errorMsg.
-  bool processImage(const std::string& hostStr, int port, dlserver::RespondWrapper& responseWrapper, std::string& errorMsg);
+  bool processImage(const std::string& hostStr, int port, mlserver::RespondWrapper& responseWrapper, std::string& errorMsg);
 
   //! Parse the response messge from the server, and if it contains
   //! an image, attempt to copy the image to the imagePlane. Return
   //! true on success, false otherwise and fill in the error string.
-  bool renderOutputBuffer(dlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg);
+  bool renderOutputBuffer(mlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg);
 
   //! Return whether the dynamic knobs should be shown or not.
   bool getShowDynamic() const;
@@ -118,17 +118,17 @@ private:
   bool _modelSelected;
 
   DD::Image::Knob* _selectedModelknob;
-  std::vector<dlserver::Model> _serverModels;
+  std::vector<mlserver::Model> _serverModels;
 
   std::vector<int> _numInputs;
   std::vector<std::vector<std::string>> _inputNames;
 
   bool _showDynamic;
   
-  DLClientModelManager _modelManager;
+  MLClientModelManager _modelManager;
 
   int _numNewKnobs;
 
 };
 
-#endif // DLCLIENT_H
+#endif // MLCLIENT_H

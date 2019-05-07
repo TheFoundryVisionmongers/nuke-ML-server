@@ -1,19 +1,19 @@
 // Copyright (c) 2019 The Foundry Visionmongers Ltd.  All Rights Reserved.
 // This is strictly non-commercial.
 
-#ifndef DLClientModelManager_H
-#define DLClientModelManager_H
+#ifndef MLClientModelManager_H
+#define MLClientModelManager_H
 
 #include <string>
 #include <vector>
 #include "message.pb.h"
 
 //! Class to parse and store knobs for a given model.
-class DLClientModelManager
+class MLClientModelManager
 {
   public:
-    explicit DLClientModelManager();
-    ~DLClientModelManager();
+    explicit MLClientModelManager();
+    ~MLClientModelManager();
 
     // Getters of the class
     int getNumOfFloats() const;
@@ -36,10 +36,10 @@ class DLClientModelManager
     void setDynamicButtonValue(int idx, int value);
 
     void clear();
-    //! Parse the model options from the DL server.
-    void parseOptions(const dlserver::Model& m);
-    //! Update any current options from any changes to the DL server.
-    void updateOptions(dlserver::Model& m);
+    //! Parse the model options from the ML server.
+    void parseOptions(const mlserver::Model& m);
+    //! Update any current options from any changes to the ML server.
+    void updateOptions(mlserver::Model& m);
 
   private:
     std::vector<int> _dynamicBoolValues;

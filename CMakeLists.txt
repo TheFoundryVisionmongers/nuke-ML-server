@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(DeepLearningPlugins VERSION 1.0.0)
+project(MachineLearningPlugins VERSION 1.0.0)
 
 #===------------------------------------------------------------------------===
 # Global settings some based on the external configuration settings
