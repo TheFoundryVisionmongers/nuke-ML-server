@@ -59,7 +59,7 @@ If not, verify that the NUKE_PATH is correctly set in this instance of Nuke (or 
 
 ## Installing the server
 
-### Docker
+### Install Docker
 
 Docker provides a way to package and run an application in a securely isolated environment called a container. This container includes all the application dependencies and libraries. It ensures that the application works seamlessly inside the container in any system environment. We use docker to create a container that easily runs the DLServer.
 
@@ -116,16 +116,16 @@ Note: Both models can have different backbones, e.g. you can chose to have Mask-
 
 Download your selected configuration and weight files:
 - Mask-RCNN ResNet50:
-  - Configuration: [e2e_mask_rcnn_R-50-FPN_2x.yaml](https://github.com/facebookresearch/Detectron/blob/master/configs/12_2017_baselines/e2e_mask_rcnn_R-50-FPN_2x.yaml)
+  - Configuration: [e2e_mask_rcnn_R-50-FPN_2x.yaml](https://raw.githubusercontent.com/facebookresearch/Detectron/master/configs/12_2017_baselines/e2e_mask_rcnn_R-50-FPN_2x.yaml)
   - Corresponding weights: [model_final.pkl](https://dl.fbaipublicfiles.com/detectron/35859007/12_2017_baselines/e2e_mask_rcnn_R-50-FPN_2x.yaml.01_49_07.By8nQcCH/output/train/coco_2014_train%3Acoco_2014_valminusminival/generalized_rcnn/model_final.pkl) (from the Detectron [Model Zoo](https://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md))
 - OR Mask_RCNN ResNet101
-  - Configuration: [e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml](https://github.com/facebookresearch/Detectron/blob/master/configs/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml)
+  - Configuration: [e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml](https://raw.githubusercontent.com/facebookresearch/Detectron/master/configs/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml)
   - Correponding weights: [model_final.pkl](https://dl.fbaipublicfiles.com/detectron/35859745/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml.02_00_30.ESWbND2w/output/train/coco_2014_train%3Acoco_2014_valminusminival/generalized_rcnn/model_final.pkl) (from the Detectron [Model Zoo](https://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md))
 - DensePose ResNet50:
-  - Configuration: [DensePose_ResNet50_FPN_s1x-e2e.yaml](https://github.com/facebookresearch/DensePose/blob/master/configs/DensePose_ResNet50_FPN_s1x-e2e.yaml)
+  - Configuration: [DensePose_ResNet50_FPN_s1x-e2e.yaml](https://raw.githubusercontent.com/facebookresearch/DensePose/master/configs/DensePose_ResNet50_FPN_s1x-e2e.yaml)
   - Corresponding weights: [DensePose_ResNet50_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
 - OR DensePose ResNet101:
-  - Configuration: [DensePose_ResNet101_FPN_s1x-e2e.yaml](https://github.com/facebookresearch/DensePose/blob/master/configs/DensePose_ResNet101_FPN_s1x-e2e.yaml)
+  - Configuration: [DensePose_ResNet101_FPN_s1x-e2e.yaml](https://raw.githubusercontent.com/facebookresearch/DensePose/master/configs/DensePose_ResNet101_FPN_s1x-e2e.yaml)
   - Corresponding weights: [DensePose_ResNet101_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
 
 And respectively move them to `Models/mrcnn/` and `Models/densepose/` folders.
