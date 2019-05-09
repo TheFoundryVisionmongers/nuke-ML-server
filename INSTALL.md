@@ -139,7 +139,7 @@ ResNet50 is the default backbone. If you use ResNet101, you need to modify the c
 
 Finally to connect the Python server with the Nuke client:
 
-0. (If you have stopped your container, follow the [Run Docker container](https://github.com/TheFoundryVisionmongers/nuke-ML-server/blob/master/INSTALL.md#run-docker-container) section again)
+0. (If you have stopped your container, follow the [Run Docker Container](https://github.com/TheFoundryVisionmongers/nuke-ML-server/blob/master/INSTALL.md#run-docker-container) section again)
 1. In the running docker container, query the ip address:
 ```
 hostname -I
