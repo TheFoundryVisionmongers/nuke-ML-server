@@ -85,7 +85,7 @@ cd Plugins/Server/
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 
-### Run a Docker Container
+### Run Docker Container
 
 Create and run a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
 
@@ -139,7 +139,7 @@ ResNet50 is the default backbone. If you use ResNet101, you need to modify the c
 
 Finally to connect the Python server with the Nuke client:
 
-0. (If you have stopped your container, follow the "Run Docker container" section again)
+0. (If you have stopped your container, follow the [Run Docker container](https://github.com/TheFoundryVisionmongers/nuke-ML-server/blob/master/INSTALL.md#run-docker-container) section again)
 1. In the running docker container, query the ip address:
 ```
 hostname -I
