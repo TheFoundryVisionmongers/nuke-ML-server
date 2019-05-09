@@ -9,7 +9,7 @@ The Nuke Machine Learning (ML) installation can be divided into compiling the ML
 - Protobuf (tested with 2.5.0 and 3.5.1)
 - Docker
 
-## Installing the client
+## Installing the Client
 
 ### Install Protobuf
 
@@ -38,7 +38,7 @@ Note: Instead of compiling it from source, Protobuf may alternatively be install
 sudo yum install protobuf-devel
 ```
 
-### Compile MLClient Nuke node
+### Compile MLClient Nuke Node
 
 If not already cloned, fetch the `nuke-ML-server` repository:
 ```
@@ -58,7 +58,7 @@ export NUKE_PATH=/path/to/lib/:$NUKE_PATH
 At that point, after opening Nuke and doing an `Update [All plugins]`, the `MLClient` node should be available.
 If not, verify that the NUKE_PATH is correctly set in this instance of Nuke (or simply export the NUKE_PATH in the ~/.bashrc)
 
-## Installing the server
+## Installing the Server
 
 ### Install Docker
 
@@ -85,7 +85,7 @@ cd Plugins/Server/
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 
-### Run a Docker container
+### Run a Docker Container
 
 Create and run a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
 
@@ -105,9 +105,9 @@ Try to replace the previous command with:
 sudo docker run --runtime=nvidia -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
 ```
 
-## Getting started
+## Getting Started
 
-### Download configuration and weights files
+### Download Configuration and Weights Files
 
 To be able to run inference on both Densepose and Mask-RCNN deep learning models, you need to download configuration and weight files.
 
@@ -135,7 +135,7 @@ And respectively move them to `Models/mrcnn/` and `Models/densepose/` folders.
 
 ResNet50 is the default backbone. If you use ResNet101, you need to modify the config and weight file names in Models/mrcnn/model.py and/or Models/densepose/model.py.
 
-### Connect client and server
+### Connect Client and Server
 
 Finally to connect the Python server with the Nuke client:
 0. (If you have stopped your container, follow the "Run Docker container" section again)
@@ -150,7 +150,7 @@ python server.py 55555
 ```
 4. In Nuke, click on the MLClient connect button, you should have the three models available.
 
-### Add your own model
+### Add your own Model
 
 To implement your own model, you can create a new folder in the /Models directory with your model name. At the minimum, this folder needs to include an empty `__init__.py` file and a `model.py` file that contains a Model class inheriting from BaseModel.
 

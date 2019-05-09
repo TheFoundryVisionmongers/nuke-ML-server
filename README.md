@@ -27,7 +27,7 @@ The plug-in works as follows:
 
 Please find installation instructions in [INSTALL.md](INSTALL.md).
 
-## Known issue
+## Known Issue
 
 The GPU can run out of memory when doing model inference.
 
