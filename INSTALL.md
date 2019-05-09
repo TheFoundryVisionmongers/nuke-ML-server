@@ -46,8 +46,9 @@ git clone https://github.com/TheFoundryVisionmongers/nuke-ML-server
 ```
 Execute the commands below to compile the client MLClient.so plug-in, setting the NUKE_INSTALL_PATH to point to the folder of the desired Nuke version:
 ```
+cd nuke-ML-server/
 mkdir build && cd build
-cmake -DNUKE_INSTALL_PATH="/path/to/Nuke11.3v1" ..
+cmake -DNUKE_INSTALL_PATH=/path/to/Nuke11.3v1/ ..
 make
 ```
 The MLClient.so plug-in will now be in the 'build/Plugins/Client' folder. Before it can be used, Nuke needs to know where it lives. One way to do this is to update the NUKE_PATH environment variable to point to the MLClient.so plug-in (This can be skipped if it was moved to the root of your ~/.nuke folder, or the path was added in Nuke through Python):
@@ -84,15 +85,17 @@ cd Plugins/Server/
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 
-Create a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
+### Run a Docker container
+
+Create and run a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
 
 ```
 sudo nvidia-docker run -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
 ```
 
-Note: the `-v` (volume) options links your nuke-ML-server/Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-ML-server/Models/`, leave the `/workspace/ml-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
+Note: the `-v` (volume) option links your host machine Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-ML-server/Models/`, leave the `/workspace/ml-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
 
-If you get:
+If you get the following error:
 ```
 /bin/nvidia-docker: line 34: /bin/docker: Permission denied
 /bin/nvidia-docker: line 34: /bin/docker: Success
@@ -135,6 +138,7 @@ ResNet50 is the default backbone. If you use ResNet101, you need to modify the c
 ### Connect client and server
 
 Finally to connect the Python server with the Nuke client:
+0. (If you have stopped your container, follow the "Run Docker container" section again)
 1. In the running docker container, query the ip address:
 ```
 hostname -I
