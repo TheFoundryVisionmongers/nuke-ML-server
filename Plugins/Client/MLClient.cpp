@@ -631,9 +631,9 @@ int MLClient::knob_changed(Knob* knobChanged)
             }
           }
         }
-        // Set current button to false (unpressed)
-        getModelManager().setDynamicButtonValue(i, 0);
       }
+      // Set current button to false (unpressed)
+      getModelManager().setDynamicButtonValue(i, 0);
       return 1;
     }
   }
