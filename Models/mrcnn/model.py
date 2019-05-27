@@ -114,7 +114,7 @@ class Model(BaseModel):
                 self.model = infer_engine.initialize_model_from_cfg(self.weights)
 
         with c2_utils.NamedCudaScope(0):
-            cls_boxes, cls_segms, cls_keyps, _ = infer_engine.im_detect_all(
+            cls_boxes, cls_segms, cls_keyps = infer_engine.im_detect_all(
                 self.model, image[:, :, ::-1], None
                 )
 

@@ -35,22 +35,14 @@ RUN pip install --no-cache-dir --upgrade pip==9.0.3 setuptools wheel && \
     cupy
 
 WORKDIR /workspace
-
 # Install the COCO API
 RUN git clone https://github.com/cocodataset/cocoapi.git
 RUN cd cocoapi/PythonAPI && make install
-
-WORKDIR /workspace
-# Install the densepose library including detectron
-RUN git clone https://github.com/facebookresearch/densepose
-RUN cd densepose && pip install -r requirements.txt && make
+# Install detectron for mask RCNN
+RUN git clone https://github.com/facebookresearch/detectron
+RUN cd detectron && pip install -r requirements.txt && make
 # Next line to find lib/libcaffe2_detectron_ops_gpu.so 
 RUN cp /opt/conda/lib/python2.7/site-packages/torch/lib/libcaffe2_detectron_ops_gpu.so /usr/local/lib
-
-# Fetch DensePose UV data
-RUN apt update && apt install wget
-RUN bash /workspace/densepose/DensePoseData/get_densepose_uv.sh
-RUN mv UV_data /workspace/densepose/DensePoseData/
 
 WORKDIR /workspace/ml-server
 # Copy your current folder to the docker image /workspace/ml-server/ folder
