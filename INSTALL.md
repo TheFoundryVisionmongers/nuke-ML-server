@@ -109,13 +109,10 @@ sudo docker run --runtime=nvidia -v /absolute/path/to/nuke-ML-server/Models/:/wo
 
 ### Download Configuration and Weights Files
 
-To be able to run inference on both Densepose and Mask-RCNN deep learning models, you need to download configuration and weight files.
+To be able to run inference on the Mask-RCNN model, you need to download its configuration and weight files.
 
 Depending on your GPU memory, you can use either a ResNet101 (GPU memory > 8GB) or a ResNet50 (GPU memory > 6GB) backbone. The results with ResNet101 are slightly better.
 - Mask-RCNN requires ~7GB GPU RAM with ResNet101 and ~4.6GB with ResNet50.
-- DensePose requires ~5.7GB GPU RAM with ResNet101 and ~4.8GB with ResNet50.
-
-Note: Both models can have different backbones, e.g. you can chose to have Mask-RCNN with ResNet50 and DensePose with ResNet101.
 
 Download your selected configuration and weight files:
 - Mask-RCNN ResNet50:
@@ -124,16 +121,10 @@ Download your selected configuration and weight files:
 - OR Mask_RCNN ResNet101
   - Configuration: [e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml](https://raw.githubusercontent.com/facebookresearch/Detectron/master/configs/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml)
   - Correponding weights: [model_final.pkl](https://dl.fbaipublicfiles.com/detectron/35859745/12_2017_baselines/e2e_mask_rcnn_X-101-64x4d-FPN_2x.yaml.02_00_30.ESWbND2w/output/train/coco_2014_train%3Acoco_2014_valminusminival/generalized_rcnn/model_final.pkl) (from the Detectron [Model Zoo](https://github.com/facebookresearch/Detectron/blob/master/MODEL_ZOO.md))
-- DensePose ResNet50:
-  - Configuration: [DensePose_ResNet50_FPN_s1x-e2e.yaml](https://raw.githubusercontent.com/facebookresearch/DensePose/master/configs/DensePose_ResNet50_FPN_s1x-e2e.yaml)
-  - Corresponding weights: [DensePose_ResNet50_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet50_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
-- OR DensePose ResNet101:
-  - Configuration: [DensePose_ResNet101_FPN_s1x-e2e.yaml](https://raw.githubusercontent.com/facebookresearch/DensePose/master/configs/DensePose_ResNet101_FPN_s1x-e2e.yaml)
-  - Corresponding weights: [DensePose_ResNet101_FPN_s1x-e2e.pkl](https://dl.fbaipublicfiles.com/densepose/DensePose_ResNet101_FPN_s1x-e2e.pkl) (from the Densepose [Model Zoo](https://github.com/facebookresearch/DensePose/blob/master/MODEL_ZOO.md))
 
-And respectively move them to `Models/mrcnn/` and `Models/densepose/` folders.
+And move them to `Models/mrcnn/` folder.
 
-ResNet50 is the default backbone. If you use ResNet101, you need to modify the config and weight file names in Models/mrcnn/model.py and/or Models/densepose/model.py.
+ResNet50 is the default backbone. If you use ResNet101, you need to modify the config and weight file names in Models/mrcnn/model.py.
 
 ### Connect Client and Server
 
@@ -155,4 +146,4 @@ python server.py 55555
 
 To implement your own model, you can create a new folder in the /Models directory with your model name. At the minimum, this folder needs to include an empty `__init__.py` file and a `model.py` file that contains a Model class inheriting from BaseModel.
 
-You can copy the simple [Models/blur/](Models/blur) model as a starting point, and implement your own model looking at the examples of blur, densepose and mrcnn.
+You can copy the simple [Models/blur/](Models/blur) model as a starting point, and implement your own model looking at the examples of blur and mrcnn.

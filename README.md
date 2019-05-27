@@ -5,7 +5,6 @@ This repository contains the client-server system enabling Machine Learning (ML)
 The following models are provided as examples:
 - blur: a simple gaussian blur operation
 - [Mask-RCNN](https://github.com/facebookresearch/Detectron)
-- [DensePose](https://github.com/facebookresearch/DensePose)
 
 <div align="center">
   <img src="https://user-images.githubusercontent.com/27013153/54621337-837f0900-4a5f-11e9-9169-0e8ad1fbe67a.png" width="700px" />
@@ -31,15 +30,11 @@ Please find installation instructions in [INSTALL.md](INSTALL.md).
 
 The GPU can run out of memory when doing model inference.
 
-To run DensePose or Mask-RCNN, it is necessary to have a GPU memory of at least 6GB.
+To run Mask-RCNN, it is necessary to have a GPU memory of at least 6GB.
 
 ## License
 
 The source code is licensed under the Apache License, Version 2.0, found in [LICENSE](LICENSE).
-
-Two of the models (Mask RCNN and DensePose) have individual licenses that can be found in their respective folders.
-
-This is strictly non-commercial.
 
 ## Contact
 

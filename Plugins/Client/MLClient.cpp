@@ -1,5 +1,17 @@
-// Copyright (c) 2018 The Foundry Visionmongers Ltd.  All Rights Reserved.
-// This is strictly non-commercial.
+// Copyright (c) 2018 Foundry.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//*************************************************************************
 
 #include <cstring>
 
@@ -7,8 +19,7 @@
 
 const char* const MLClient::kClassName = "MLClient";
 const char* const MLClient::kHelpString = 
-  "Connects to a Python server for Machine Learning inference.\n"
-  "This is strictly non-commercial.";
+  "Connects to a Python server for Machine Learning inference.";
 
 const char* const MLClient::kDefaultHostName = "172.17.0.2";
 const int         MLClient::kDefaultPortNumber = 55555;
@@ -538,8 +549,6 @@ void MLClient::addDynamicKnobs(void* p, Knob_Callback f)
 
 void MLClient::knobs(Knob_Callback f)
 {
-  Text_knob(f, "This plugin is strictly non-commercial.");
-  Divider(f, "  ");
   String_knob(f, &_host, "host");
   Int_knob(f, &_port, "port");
   Button(f, "connect", "Connect");

@@ -2,21 +2,6 @@
 .vscode/
 build/
 build-Debug/
-# Ignore unrelated Docs files, see README.md and INSTALL.md for this repo docs
-Docs/
-
-# Ignore all models but blur, densepose and mrcnn
-Models/faceDetection/
-Models/fastImageProcessing/
-Models/fastImageProcessingParameterized/
-Models/pwcNet/
-Models/styleTransfer/
-
-# Ignore all Plugins but MLClient and MLServer
-Plugins/Denoise/
-Plugins/Init/
-Plugins/Process/
-Plugins/Scale/
 
 # Ignore Python compiled files
 *.py[co]
@@ -30,6 +15,3 @@ Plugins/Scale/
 # Ignore generated files
 *.os
 *.o
-
-# Ignore Foundry conanfile
-conanfile.py
