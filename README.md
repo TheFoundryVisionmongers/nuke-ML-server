@@ -26,11 +26,10 @@ The plug-in works as follows:
 
 Please find installation instructions in [INSTALL.md](INSTALL.md).
 
-## Known Issue
+## Known Issues
 
-The GPU can run out of memory when doing model inference.
-
-To run Mask-RCNN, it is necessary to have a GPU memory of at least 6GB.
+1. The GPU can run out of memory when doing model inference. To run Mask-RCNN, it is necessary to have a GPU memory of at least 6GB.
+2. If you get the following error: "The TensorFlow library was compiled to use AVX instructions, but these aren't available on your machine." Please refer to [issue#10](https://github.com/TheFoundryVisionmongers/nuke-ML-server/issues/10) [Thanks to [samhodge](https://github.com/samhodge)]
 
 ## License
 
