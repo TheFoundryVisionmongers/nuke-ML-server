@@ -18,6 +18,7 @@ import argparse
 import os
 import importlib
 import socket #to get machine hostname
+import traceback
 
 import numpy as np
 
@@ -201,7 +202,8 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
             resp_msg.r2.CopyFrom(resp_inf)
         except Exception as e:
             # Pass error message to the client
-            self.vprint('Exception caught on inference on model: {}'.format(str(e)))
+            self.vprint('Exception caught on inference on model:')
+            self.vprint(str(traceback.print_exc()))
             resp_msg = self.errormsg(str(e))
             
         return resp_msg
