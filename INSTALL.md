@@ -55,7 +55,7 @@ The MLClient.so plug-in will now be in the 'build/Plugins/Client' folder. Before
 ```
 export NUKE_PATH=/path/to/lib/:$NUKE_PATH
 ```
-At that point, after opening Nuke and updating all plugins, the `MLClient` node should be available. To update all the plugins in Nuke, you can either use the Other > All Plugins > Update option (see [documentation](https://learn.foundry.com/nuke/developers/63/pythondevguide/)installing_plugins.html)), or simply press `tab` in the Node Graph then write `Update [All plugins]`. If the `MLClient` node is still missing, verify that the current NUKE_PATH is correctly pointing to the folder containing MLClient.so.
+At that point, after opening Nuke and updating all plugins, the `MLClient` node should be available. To update all the plugins in Nuke, you can either use the Other > All Plugins > Update option (see [documentation](https://learn.foundry.com/nuke/developers/63/pythondevguide/installing_plugins.html)), or simply press `tab` in the Node Graph then write `Update [All plugins]`. If the `MLClient` node is still missing, verify that the current NUKE_PATH is correctly pointing to the folder containing MLClient.so.
 
 ## Installing the Server
 
