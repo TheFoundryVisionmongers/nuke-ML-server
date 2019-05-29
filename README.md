@@ -35,9 +35,10 @@ Please find installation instructions in [INSTALL.md](INSTALL.md).
 
 The source code is licensed under the Apache License, Version 2.0, found in [LICENSE](LICENSE).
 
-## Contact
+## Contacts
 
 - Johanna Barbier (Johanna.Barbier@foundry.com)
+- Dan Ring (Dan.Ring@foundry.com)
 
 This plug-in was initially created by Sebastian Lutz (https://v-sense.scss.tcd.ie/?profile=sebastian-lutz).
 
