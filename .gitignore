@@ -15,3 +15,9 @@ build-Debug/
 # Ignore generated files
 *.os
 *.o
+
+# Ignore all directories named (for trainingTemplateTF)
+summaries/
+input/
+groundtruth/
+checkpoints/

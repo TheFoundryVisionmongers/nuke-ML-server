@@ -32,7 +32,8 @@ RUN pip install --no-cache-dir --upgrade pip==9.0.3 setuptools wheel && \
     protobuf \
     scikit-image \
     tensorflow-gpu \
-    cupy
+    cupy \
+    OpenEXR
 
 WORKDIR /workspace
 # Install the COCO API
