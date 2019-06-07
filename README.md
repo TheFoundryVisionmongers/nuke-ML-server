@@ -5,7 +5,7 @@ This repository contains the client-server system enabling Machine Learning (ML)
 The following models are provided as examples:
 - blur: a simple gaussian blur operation
 - [Mask-RCNN](https://github.com/facebookresearch/Detectron)
-- [trainingTemplateTF]((https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF)): a training template written in TensorFlow which enables simple image-to-image training. Instructions on how to use this template are found [here](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF).
+- [trainingTemplateTF](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF): a training template written in TensorFlow which enables simple image-to-image training. Instructions on how to use this template are found [here](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF).
 
 <div align="center">
   <img src="https://user-images.githubusercontent.com/27013153/54621337-837f0900-4a5f-11e9-9169-0e8ad1fbe67a.png" width="700px" />
