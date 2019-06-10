@@ -37,7 +37,8 @@ class Model(BaseModel):
         self.name = 'Training Template TF'
         self.n_levels = 3
         self.scale = 0.5
-        self.checkpoints_dir = './models/trainingTemplateTF/checkpoints'
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.checkpoints_dir = os.path.join(dir_path, 'checkpoints')
         self.batch_size = 1
 
         # Initialise checkpoint name to the most advanced checkpoint (highest step)
