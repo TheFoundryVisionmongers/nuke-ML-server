@@ -1,8 +1,8 @@
 # Training Template: Train and Infer Models in the nuke-ML-server
 
-The TrainingTemplateTF model is a training template written in Tensorflow. It aims at quickly enabling image-to-image training using a multi-scale encoder-decoder model. When trained, the model can be tested and used directly in Nuke through the nuke-ML-server.
+The TrainingTemplateTF model is a training template written in TensorFlow. It aims at quickly enabling image-to-image training using a multi-scale encoder-decoder model. When trained, the model can be tested and used directly in Nuke through the nuke-ML-server.
 
-For instance, if you have a set of noisy / clear image pairs and would like to train a model to be able to denoise an image, you simply need to fill in your data in the `TrainingTemplateTF/data` and start the training with one command line. You can monitor the training using Tensorboard and eventually test the trained model on live images in Nuke.
+For instance, if you have a set of noisy / clear image pairs and would like to train a model to be able to denoise an image, you simply need to fill in your data in the `TrainingTemplateTF/data` and start the training with one command line. You can monitor the training using TensorBoard and eventually test the trained model on live images in Nuke.
 
 This page contains instructions on how to use this training template. The training happens in the Docker container, while the inference is done through the MLClient plugin.
 
@@ -14,7 +14,7 @@ cd Plugins/Server/
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 
-To run the docker container ([Run Docker Container](https://github.com/TheFoundryVisionmongers/nuke-ML-server/blob/master/INSTALL.md#run-docker-container) section), remove the read-only ":ro" command (to write model checkpoints and training summaries) and export port 6006 (for [Tensorboard visualisation](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF#tensorboard)):
+To run the docker container ([Run Docker Container](https://github.com/TheFoundryVisionmongers/nuke-ML-server/blob/master/INSTALL.md#run-docker-container) section), remove the read-only ":ro" command (to write model checkpoints and training summaries) and export port 6006 (for [TensorBoard visualisation](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF#tensorboard)):
 ```
 nvidia-docker run -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models -p 6006:6006 -it <docker_image_name>
 ```
@@ -59,13 +59,13 @@ If you reach an OOM error, you can consider reducing the GPU memory requirements
 
 During training, images are cropped as a preprocessing step before being fed to the network. Therefore if you want your model to learn a global image information (e.g. lens distortion), this cropping preprocessing should be changed in the code (e.g. use resize & padding instead), so as to keep the whole image information.
 
-### Tensorboard
+### TensorBoard
 
-[Tensorboard](https://www.tensorflow.org/guide/summaries_and_tensorboard) is a great way to visualise how your training is progressing.
+[TensorBoard](https://www.tensorflow.org/guide/summaries_and_tensorboard) is a great way to visualise how your training is progressing.
 
 The TrainingTemplateTF automatically saves learning rate and loss evolution as well as input, groundtruth and temporary output images in the `trainingTemplateTF/summaries/` folder.
 
-To view these tensorboard summaries, first find which container is currently running your training (STATUS: Up, PORTS: 0.0.0.0:6006->6006/tcp, NAMES=`<container>`) from all the created docker containers:
+To view these TensorBoard summaries, first find which container is currently running your training (STATUS: Up, PORTS: 0.0.0.0:6006->6006/tcp, NAMES=`<container>`) from all the created docker containers:
 ```
 sudo docker ps -a
 ```
@@ -73,7 +73,7 @@ Launch a second terminal connected to the same docker container, where `<contain
 ```
 docker exec -it <container> bash
 ```
-Launch tensorboard in this new docker terminal to view the progression in real-time in your browser:
+Launch TensorBoard in this new docker terminal to view the progression in real-time in your browser:
 ```
 tensorboard --logdir models/trainingTemplateTF/summaries/
 ```
