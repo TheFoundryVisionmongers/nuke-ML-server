@@ -33,54 +33,61 @@ class TrainModel(object):
     """Train the EncoderDecoder from the given input and grountruth data"""
 
     def __init__(self, args):
-        self.n_levels = 3
-        self.scale = 0.5
-        self.channels = 3 # input / output channels
-        self.checkpoints_dir = './checkpoints'
-        if not os.path.exists(self.checkpoints_dir):
-            os.makedirs(self.checkpoints_dir)
-        self.save_name = 'trainingTemplateTF.model'
-        # Directory containing tensorboard summaries
-        self.summaries_dir = './summaries/'
-
-        # Get training dataset as lists of image paths
-        in_data_path = './data/train/input'
-        gt_data_path = './data/train/groundtruth'
-        self.in_data_list = get_filepaths_from_dir(in_data_path)
-        self.gt_data_list = get_filepaths_from_dir(gt_data_path)
-        if len(self.in_data_list) is 0 or len(self.gt_data_list) is 0:
-            raise ValueError("No training data found in folders {} or {}".format(in_data_path, gt_data_path))
-        if len(self.in_data_list) != len(self.gt_data_list):
-            raise ValueError("{} and {} should have the same number of input data".format(in_data_path, gt_data_path))
-        self.file_extension = os.path.splitext(self.in_data_list[0])[1][1:]
-
-        # Get testing dataset if provided
-        self.has_test_data = True
-        test_in_data_path = './data/test/input'
-        test_gt_data_path = './data/test/groundtruth'
-        self.test_in_data_list = get_filepaths_from_dir(test_in_data_path)
-        self.test_gt_data_list = get_filepaths_from_dir(test_gt_data_path)
-        if len(self.test_in_data_list) is 0 or len(self.test_gt_data_list) is 0:
-            print("No test data found in {} or {}".format(test_in_data_path, test_gt_data_path))
-            self.has_test_data = False
-        elif len(self.test_in_data_list) != len(self.test_gt_data_list):
-            raise ValueError("{} and {} should have the same number of input data".format(test_in_data_path, test_gt_data_path))
-        else:
-            print("Number of test data: {}".format(len(self.test_in_data_list)))
-        
-        # Get training hyperparameters
+        # Training hyperparameters
         self.learning_rate = args.learning_rate
         self.batch_size = args.batch_size
         self.epoch = args.epoch
-        if (len(self.in_data_list) < self.batch_size):
-            raise ValueError("Batch size must be smaller than the dataset (batch size = {}, number of training data = {})"
-                .format(self.batch_size, len(self.in_data_list)))
         self.crop_size = 256
+        self.n_levels = 3
+        self.scale = 0.5
+        self.channels = 3 # input / output channels
+        # Training and validation dataset paths
+        train_in_data_path = './data/train/input'
+        train_gt_data_path = './data/train/groundtruth'
+        val_in_data_path = './data/val/input'
+        val_gt_data_path = './data/val/groundtruth'
+        # Where to save and load model weights (=checkpoints)
+        self.checkpoints_dir = './checkpoints'
+        if not os.path.exists(self.checkpoints_dir):
+            os.makedirs(self.checkpoints_dir)
+        self.ckpt_save_name = 'trainingTemplateTF.model'
+        # Where to save tensorboard summaries
+        self.summaries_dir = './summaries/'
 
-        batch_per_epoch = (len(self.in_data_list)) // self.batch_size
+        # Get training dataset as lists of image paths
+        self.train_in_data_list = get_filepaths_from_dir(train_in_data_path)
+        self.train_gt_data_list = get_filepaths_from_dir(train_gt_data_path)
+        if len(self.train_in_data_list) is 0 or len(self.train_gt_data_list) is 0:
+            raise ValueError("No training data found in folders {} or {}".format(train_in_data_path, train_gt_data_path))
+        elif len(self.train_in_data_list) != len(self.train_gt_data_list):
+            raise ValueError("{} ({} data) and {} ({} data) should have the same number of input data"
+                .format(train_in_data_path, len(self.train_in_data_list), train_gt_data_path, len(self.train_gt_data_list)))
+        elif (len(self.train_in_data_list) < self.batch_size):
+            raise ValueError("Batch size must be smaller than the dataset (batch size = {}, number of training data = {})"
+                .format(self.batch_size, len(self.train_in_data_list)))
+        self.file_extension = os.path.splitext(self.train_in_data_list[0])[1][1:]
+
+        # Get validation dataset if provided
+        self.has_val_data = True
+        self.val_in_data_list = get_filepaths_from_dir(val_in_data_path)
+        self.val_gt_data_list = get_filepaths_from_dir(val_gt_data_path)
+        if len(self.val_in_data_list) is 0 or len(self.val_gt_data_list) is 0:
+            print("No validation data found in {} or {}".format(val_in_data_path, val_gt_data_path))
+            self.has_val_data = False
+        elif len(self.val_in_data_list) != len(self.val_gt_data_list):
+            raise ValueError("{} ({} data) and {} ({} data) should have the same number of input data"
+                .format(val_in_data_path, len(self.val_in_data_list), val_gt_data_path, len(self.val_gt_data_list)))
+        elif (len(self.val_in_data_list) < self.batch_size):
+            raise ValueError("Batch size must be smaller than the dataset (batch size = {}, number of validation data = {})"
+                .format(self.batch_size, len(self.val_in_data_list)))
+        else:
+            print("Number of validation data: {}".format(len(self.val_in_data_list)))
+
+        # Compute and print training hyperparameters
+        batch_per_epoch = (len(self.train_in_data_list)) // self.batch_size
         self.max_steps = int(self.epoch * (batch_per_epoch))
         print_("Number of training data: {}\nNumber of batches per epoch: {} (batch size = {})\nNumber of training steps for {} epochs: {}\n"
-            .format(len(self.in_data_list), batch_per_epoch, self.batch_size, self.epoch, self.max_steps), 'm')
+            .format(len(self.train_in_data_list), batch_per_epoch, self.batch_size, self.epoch, self.max_steps), 'm')
 
     def get_data(self, in_data_list, gt_data_list, batch_size=16, epoch=100):
 
@@ -108,11 +115,11 @@ class TrainModel(object):
         with tf.variable_scope('input'):
             # Ensure preprocessing is done on the CPU (to let the GPU focus on training)
             with tf.device('/cpu:0'):
-                in_list = tf.convert_to_tensor(self.in_data_list, dtype=tf.string)
-                gt_list = tf.convert_to_tensor(self.gt_data_list, dtype=tf.string)
+                in_list = tf.convert_to_tensor(in_data_list, dtype=tf.string)
+                gt_list = tf.convert_to_tensor(gt_data_list, dtype=tf.string)
         
                 path_dataset = tf.data.Dataset.from_tensor_slices((in_list, gt_list))
-                path_dataset = path_dataset.shuffle(buffer_size=len(self.in_data_list)).repeat(epoch)
+                path_dataset = path_dataset.shuffle(buffer_size=len(in_data_list)).repeat(epoch)
                 # Apply read_and_preprocess_data function to all input in the path_dataset
                 dataset = path_dataset.map(read_and_preprocess_data, num_parallel_calls=4)
                 dataset = dataset.batch(batch_size)
@@ -136,17 +143,17 @@ class TrainModel(object):
         tf.summary.scalar('loss_total', loss_total)
         return loss_total
 
-    def test(self, model):
-        total_test_loss = 0.0
-        # Get next data from preprocessed test dataset
-        test_img_in, test_img_gt = self.get_data(self.test_in_data_list, self.test_gt_data_list, self.batch_size, 1)
-        n_outputs = model(test_img_in, reuse=False)
-        test_op = self.loss(n_outputs, test_img_gt)
+    def validate(self, model):
+        total_val_loss = 0.0
+        # Get next data from preprocessed validation dataset
+        val_img_in, val_img_gt = self.get_data(self.val_in_data_list, self.val_gt_data_list, self.batch_size, -1)
+        n_outputs = model(val_img_in, reuse=False)
+        val_op = self.loss(n_outputs, val_img_gt)
         # Test results over one epoch
-        batch_per_epoch = len(self.test_in_data_list) // self.batch_size
+        batch_per_epoch = len(self.val_in_data_list) // self.batch_size
         for batch in xrange(batch_per_epoch):
-            total_test_loss += test_op
-        return total_test_loss / batch_per_epoch
+            total_val_loss += val_op
+        return total_val_loss / batch_per_epoch
 
     def train(self):    
         # Build model
@@ -161,7 +168,7 @@ class TrainModel(object):
         adam = tf.train.AdamOptimizer(self.lr)
 
         # Get next data from preprocessed training dataset
-        img_in, img_gt = self.get_data(self.in_data_list, self.gt_data_list, self.batch_size, self.epoch)
+        img_in, img_gt = self.get_data(self.train_in_data_list, self.train_gt_data_list, self.batch_size, self.epoch)
         tf.summary.image('img_in', im2uint8(img_in))
         tf.summary.image('img_gt', im2uint8(img_gt))
         print('img_in, img_gt', img_in.shape, img_gt.shape)
@@ -185,41 +192,47 @@ class TrainModel(object):
 
         # Tensorboard summary
         summary_op = tf.summary.merge_all()
-        summary_name = "data{}_bch{}_ep{}".format(len(self.in_data_list), self.batch_size, self.epoch)
+        summary_name = "data{}_bch{}_ep{}".format(len(self.train_in_data_list), self.batch_size, self.epoch)
         summary_writer = tf.summary.FileWriter(self.summaries_dir + summary_name, graph=sess.graph, flush_secs=30)
 
-        # Testing on unseen test dataset
-        if self.has_test_data:
-            test_loss_op = self.test(model)
-            # Save test loss to tensorboard
-            test_summary_op = tf.summary.scalar('test_loss', test_loss_op)
+        # Compute loss on validation dataset to check overfitting
+        if self.has_val_data:
+            val_loss_op = self.validate(model)
+            # Save validation loss to tensorboard
+            val_summary_op = tf.summary.scalar('val_loss', val_loss_op)
+            # Compute initial loss
+            val_loss, val_summary = sess.run([val_loss_op, val_summary_op])
+            summary_writer.add_summary(val_summary, global_step=0)
+            print("Initial Loss on validation dataset: {:.4f}".format(val_loss))
 
         for step in xrange(sess.run(global_step), self.max_steps):
             start_time = time.time()
-            # Train model and record summaries
-            if step % 100 == 0 or step == self.max_steps - 1:
+            val_str = ''
+            if step % 50 == 0 or step == self.max_steps - 1:
+                # Train model and record summaries
                 _, loss_total, summary = sess.run([train_op, loss_op, summary_op])
                 summary_writer.add_summary(summary, global_step=step)
+                duration = time.time() - start_time
+                if self.has_val_data and step != 0:
+                    # Compute validation loss
+                    val_loss, val_summary = sess.run([val_loss_op, val_summary_op])
+                    summary_writer.add_summary(val_summary, global_step=step)
+                    val_str = ', val loss: {:.4f}'.format(val_loss)
             else: # Train only
                 _, loss_total = sess.run([train_op, loss_op])
-            duration = time.time() - start_time
+                duration = time.time() - start_time
             assert not np.isnan(loss_total), 'Model diverged with loss = NaN'
 
             if step % 10 == 0 or step == self.max_steps - 1:
                 examples_per_sec = self.batch_size / duration
                 sec_per_batch = float(duration)
-                format_str = ('%s: step %d, loss = %.5f (%.1f data/s; %.3f s/bch)')
-                print(format_str % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), step, loss_total,
-                                examples_per_sec, sec_per_batch))
+                format_str = ('{}: step {}, loss: {:.4f} ({:.1f} data/s; {:.3f} s/bch)'
+                    .format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), step, loss_total, examples_per_sec, sec_per_batch))
+                print(format_str + val_str)
 
             if step % 1000 == 0 or step == self.max_steps - 1:
                 # Save current model in a checkpoint
                 self.save(sess, self.checkpoints_dir, step)
-                # Compute loss on unseen test dataset to check overfitting
-                if self.has_test_data:
-                    test_loss, test_summary = sess.run([test_loss_op, test_summary_op])
-                    summary_writer.add_summary(test_summary, global_step=step)
-                    print("Loss on test dataset: {}".format(test_loss))
 
         print_("--------End of training--------\n", 'm')
         # Free all resources associated with the session
@@ -228,7 +241,7 @@ class TrainModel(object):
     def save(self, sess, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-        self.saver.save(sess, os.path.join(checkpoint_dir, self.save_name), global_step=step)
+        self.saver.save(sess, os.path.join(checkpoint_dir, self.ckpt_save_name), global_step=step)
 
     def load(self, sess, checkpoint_dir):
         ckpt_names = get_ckpt_list(checkpoint_dir)

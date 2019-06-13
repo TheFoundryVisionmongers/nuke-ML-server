@@ -15,6 +15,7 @@
 
 import sys
 import os
+import re
 
 import numpy as np
 import OpenEXR, Imath
@@ -45,6 +46,13 @@ def get_filepaths_from_dir(dir_path):
             data_list += [os.path.join(root,filename)]
     return data_list
 
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    '''Use mylist.sort(key=natural_keys) to sort mylist in human order'''
+    return [atoi(c) for c in re.split(r'(\d+)', text)]
+
 def get_ckpt_list(ckpt_dir):
     filenames_list = []
     for (root, directories, filenames) in os.walk(ckpt_dir):
@@ -57,7 +65,7 @@ def get_ckpt_list(ckpt_dir):
         if len(split) > 1 and split[-1] == 'index':
             # remove .index to get the ckeckpoint name
             ckpt_list += [filename[:-6]]
-    ckpt_list.sort()
+    ckpt_list.sort(key=natural_keys)
     return ckpt_list
 
 def im2uint8(x):

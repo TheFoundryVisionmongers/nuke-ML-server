@@ -28,7 +28,7 @@ To train the ML algorithm, your need to provide a dataset of groundtruth & input
 
 Respectively place your input and groundtruth data in `trainingTemplateTF/data/train/input/` and `trainingTemplateTF/data/train/groundtruth/` folders.
 
-Optionally, you can add a separate set of image pairs in `trainingTemplateTF/data/test/input/`and `trainingTemplateTF/data/test/groundtruth/`. If available, the current weights are periodically tested on this unseen test dataset to check that there is no overfitting on the training data. Please note that the test dataset and training dataset must not intersect, no image pair should be found in both datasets.
+Optionally, you can add a separate set of image pairs in `trainingTemplateTF/data/val/input/`and `trainingTemplateTF/data/val/groundtruth/`. If this validation dataset is available, it is periodically tested on the current model weights to check that there is no overfitting on the training data. Please note that the validation dataset and training dataset must not intersect, no image pair should be found in both datasets.
 
 Notes:
 - The preprocessing cropping size is currently 256x256, therefore the dataset images are expected to be at least 256x256.
