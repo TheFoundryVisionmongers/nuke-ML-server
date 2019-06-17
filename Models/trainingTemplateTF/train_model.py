@@ -27,10 +27,11 @@ import numpy as np
 
 import tensorflow as tf
 from util.model_builder import EncoderDecoder
-from util.util import im2uint8, get_filepaths_from_dir, get_ckpt_list, read_exr, print_
+from util.util import im2uint8, get_filepaths_from_dir, get_ckpt_list, print_
+from util.util import is_exr, read_crop_exr_pair
 
 class TrainModel(object):
-    """Train the EncoderDecoder from the given input and grountruth data"""
+    """Train the EncoderDecoder from the given input and groundtruth data"""
 
     def __init__(self, args):
         # Training hyperparameters
@@ -65,7 +66,7 @@ class TrainModel(object):
         elif (len(self.train_in_data_list) < self.batch_size):
             raise ValueError("Batch size must be smaller than the dataset (batch size = {}, number of training data = {})"
                 .format(self.batch_size, len(self.train_in_data_list)))
-        self.file_extension = os.path.splitext(self.train_in_data_list[0])[1][1:]
+        self.is_exr = is_exr(self.train_in_data_list[0])
 
         # Get validation dataset if provided
         self.has_val_data = True
@@ -81,6 +82,9 @@ class TrainModel(object):
             raise ValueError("Batch size must be smaller than the dataset (batch size = {}, number of validation data = {})"
                 .format(self.batch_size, len(self.val_in_data_list)))
         else:
+            val_is_exr = is_exr(self.val_in_data_list[0])
+            if (val_is_exr and not self.is_exr) or (not val_is_exr and self.is_exr):
+                raise TypeError("Train and validation data should have the same file format")
             print("Number of validation data: {}".format(len(self.val_in_data_list)))
 
         # Compute and print training hyperparameters
@@ -92,24 +96,19 @@ class TrainModel(object):
     def get_data(self, in_data_list, gt_data_list, batch_size=16, epoch=100):
 
         def read_and_preprocess_data(path_img_in, path_img_gt):
-            if self.file_extension in ['jpg', 'jpeg', 'png', 'bmp', 'JPG', 'JPEG', 'PNG', 'BMP']:
+            if self.is_exr: # ['exr', 'EXR']
+                # Read and crop data
+                img_crop = tf.py_func(read_crop_exr_pair, [path_img_in, path_img_gt, self.crop_size], [tf.float32, tf.float32])
+                img_crop = tf.unstack(tf.reshape(img_crop, [2, self.crop_size, self.crop_size, self.channels]))
+            else: # ['jpg', 'jpeg', 'png', 'bmp', 'JPG', 'JPEG', 'PNG', 'BMP']
+                # Read data
                 img_in_raw = tf.read_file(path_img_in)
                 img_gt_raw = tf.read_file(path_img_gt)
                 img_in_tensor = tf.image.decode_image(img_in_raw, channels=3)
                 img_gt_tensor = tf.image.decode_image(img_gt_raw, channels=3)
-                # Normalise
+                # Normalise then crop data
                 imgs = [tf.cast(img, tf.float32) / 255.0 for img in [img_in_tensor, img_gt_tensor]]
-            elif self.file_extension in ['exr', 'EXR']:
-                img_in = tf.py_func(read_exr, [path_img_in], tf.float32)
-                img_gt = tf.py_func(read_exr, [path_img_gt], tf.float32)
-                img_in_tensor = tf.convert_to_tensor(img_in, dtype=tf.float32)
-                img_gt_tensor = tf.convert_to_tensor(img_gt, dtype=tf.float32)
-                imgs = [tf.cast(img, tf.float32) for img in [img_in_tensor, img_gt_tensor]]
-            else:
-                raise TypeError("{} unhandled type extensions. Should be one of "
-                    "['jpg', 'jpeg', 'png', 'bmp', 'exr']". format(self.file_extension))
-            # Crop data
-            img_crop = tf.unstack(tf.random_crop(tf.stack(imgs, axis=0), [2, self.crop_size, self.crop_size, self.channels]), axis=0)
+                img_crop = tf.unstack(tf.random_crop(tf.stack(imgs, axis=0), [2, self.crop_size, self.crop_size, self.channels]), axis=0)
             return img_crop
         
         with tf.variable_scope('input'):

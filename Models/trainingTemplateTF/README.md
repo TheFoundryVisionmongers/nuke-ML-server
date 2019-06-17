@@ -32,7 +32,8 @@ Optionally, you can add a separate set of image pairs in `trainingTemplateTF/dat
 
 Notes:
 - The preprocessing cropping size is currently 256x256, therefore the dataset images are expected to be at least 256x256.
-- Supported image types are JPG, PNG, BMP and EXR. EXR is very slow at the moment and will be optimised in a future update.
+- Supported image types are JPG, PNG, BMP and EXR.
+- Depending on the compression used, EXR images can be slower to read. In our experiments, the fastest EXR read is achieved with B44, B44A or no compression.
 
 ### Training
 
