@@ -23,7 +23,7 @@ def mobilenet_transfer(class_number):
     # Freeze base_model
     # for layer in base_model.layers: # <=> to [:86]
     #     layer.trainable = False
-    # Freeze the first 20 layers and fine-tune the rest
+    # Freeze the first 60 layers and fine-tune the rest
     for layer in model.layers[:60]:
         layer.trainable=False
     for layer in model.layers[60:]:

@@ -2,7 +2,7 @@
 
 The classTemplateTF is a training template written in TensorFlow. It aims at quickly enabling classification training. For instance, detecting the presence of a specific actor in a shot. When trained, the model can be tested and used directly in Nuke through the nuke-ML-server.
 
-Apart from the dataset structure, all other instructions are similar to the [Training Template](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF).
+Apart from the dataset structure, all other instructions are similar to the other [Training Template](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF).
 
 ## Dataset
 

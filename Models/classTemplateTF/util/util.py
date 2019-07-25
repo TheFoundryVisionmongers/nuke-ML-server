@@ -3,9 +3,6 @@ import os
 import re
 
 import numpy as np
-import OpenEXR, Imath
-import PIL.Image as Image # PIL (Python Imaging Library)
-
 import tensorflow as tf
 
 def print_(str, colour='', bold=False):
