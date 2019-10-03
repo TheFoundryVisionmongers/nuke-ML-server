@@ -72,7 +72,7 @@ sudo systemctl start docker
 ```
 Nvidia Docker is a necessary plugin that enables Nvidia GPU-accelerated applications to run in Docker.
 
-Install nvidia-docker for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section "CentOS 7 (**docker-ce**), RHEL 7.4/7.5 (**docker-ce**), Amazon Linux 1/2" of the repository.
+Install nvidia-container-toolkit for your Linux platform by following the [installation instructions](https://github.com/NVIDIA/nvidia-docker) of the nvidia-docker repository. On CentOS/RHEL, you should follow section "CentOS 7 (**docker-ce**), RHEL 7.4/7.5 (**docker-ce**), Amazon Linux 1/2" of the repository.
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
@@ -89,20 +89,10 @@ sudo docker build -t <docker_image_name> -f Dockerfile .
 Create and run a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
 
 ```
-sudo nvidia-docker run -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
+sudo docker run --gpus all -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
 ```
 
 Note: the `-v` (volume) option links your host machine Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-ML-server/Models/`, leave the `/workspace/ml-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
-
-If you get the following error:
-```
-/bin/nvidia-docker: line 34: /bin/docker: Permission denied
-/bin/nvidia-docker: line 34: /bin/docker: Success
-```
-Try to replace the previous command with:
-```
-sudo docker run --runtime=nvidia -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
-```
 
 ## Getting Started
 
