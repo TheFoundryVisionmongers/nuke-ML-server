@@ -14,11 +14,10 @@ cd Plugins/Server/
 sudo docker build -t <docker_image_name> -f Dockerfile .
 ```
 
-To run the docker container ([Run Docker Container](https://github.com/TheFoundryVisionmongers/nuke-ML-server/blob/master/INSTALL.md#run-docker-container) section), remove the read-only ":ro" command (to write model checkpoints and training summaries) and export port 6006 (for [TensorBoard visualisation](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF#tensorboard)):
+To launch the [TensorBoard Visualisation](https://github.com/TheFoundryVisionmongers/nuke-ML-server/tree/master/Models/trainingTemplateTF#tensorboard) from within the Docker, you have to run the docker container ([Run Docker Container](https://github.com/TheFoundryVisionmongers/nuke-ML-server/blob/master/INSTALL.md#run-docker-container) section) with an exported port 6006:
 ```
-nvidia-docker run -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models -p 6006:6006 -it <docker_image_name>
+sudo docker run --gpus all -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models -p 6006:6006 -it <docker_image_name>
 ```
-The created docker container should now be running in the correct environment.
 
 ## Train in Docker
 

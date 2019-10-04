@@ -89,10 +89,10 @@ sudo docker build -t <docker_image_name> -f Dockerfile .
 Create and run a docker container on top of the created docker image, referencing the `<docker_image_name>` from the previous step:
 
 ```
-sudo docker run --gpus all -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models:ro -it <docker_image_name>
+sudo docker run --gpus all -v /absolute/path/to/nuke-ML-server/Models/:/workspace/ml-server/models -it <docker_image_name>
 ```
 
-Note: the `-v` (volume) option links your host machine Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-ML-server/Models/`, leave the `/workspace/ml-server/models:ro` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
+Note: the `-v` (volume) option links your host machine Models/ folder with the models/ folder inside your container. You only need to modify `/absolute/path/to/nuke-ML-server/Models/`, leave the `/workspace/ml-server/models` unchanged as it already corresponds to the folder structure inside your Docker image. This option allows you to add models in Models/ that will be directly available and updated inside your container.
 
 ## Getting Started
 
