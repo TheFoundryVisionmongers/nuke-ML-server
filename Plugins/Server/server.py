@@ -31,11 +31,13 @@ c2_utils.import_detectron_ops()
 class MLTCPServer(SocketServer.TCPServer):
     def __init__(self, server_address, handler_class, auto_bind=True):
         self.verbose = True
-        self.available_models = next(os.walk('models'))[1]
+        # Each directory in models/ containing a model.py file is an available ML model
+        self.available_models = [name for name in next(os.walk('models'))[1]
+            if os.path.isfile(os.path.join('models', name, 'model.py'))]
         self.models = {}
         for model in self.available_models:
+            print('Importing models.{}.model'.format(model))
             self.models[model] = importlib.import_module('models.{}.model'.format(model)).Model()
-
         SocketServer.TCPServer.__init__(self, server_address, handler_class, auto_bind)
         return
 

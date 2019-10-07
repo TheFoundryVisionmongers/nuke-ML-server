@@ -11,8 +11,10 @@ import scipy.misc
 import numpy as np
 
 import tensorflow as tf
-import util.model_builder
-from util.util import im2uint8, get_filepaths_from_dir, get_saved_model_list, get_labels_from_dir, print_
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from common.model_builder import mobilenet_transfer
+from common.util import im2uint8, get_filepaths_from_dir, get_saved_model_list, get_labels_from_dir, print_
 
 class TrainModel(object):
     """Train the chosen model from the given input and groundtruth data"""
@@ -32,7 +34,9 @@ class TrainModel(object):
             os.makedirs(self.checkpoints_dir)
         self.ckpt_save_name = 'classTemplate'
         # Where to save tensorboard summaries
-        self.summaries_dir = './summaries/'
+        self.summaries_dir = './summaries'
+        if not os.path.exists(self.summaries_dir):
+            os.makedirs(self.summaries_dir)
 
         # Get training dataset as lists of image paths
         self.train_gt_data_list = get_filepaths_from_dir(self.train_data_path)
@@ -76,7 +80,7 @@ class TrainModel(object):
 
     def train(self):
         # Build model
-        self.model = util.model_builder.mobilenet_transfer(len(self.train_labels))
+        self.model = mobilenet_transfer(len(self.train_labels))
         # Configure the model for training
         self.model.compile(optimizer=tf.keras.optimizers.Adam(),
             loss='categorical_crossentropy',

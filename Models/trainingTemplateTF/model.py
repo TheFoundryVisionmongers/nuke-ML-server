@@ -15,8 +15,6 @@
 
 from __future__ import print_function
 
-from ..baseModel import BaseModel
-
 import sys
 import os
 import time
@@ -26,8 +24,10 @@ import numpy as np
 import cv2
 
 import tensorflow as tf
-from util.model_builder import EncoderDecoder
-from util.util import print_, get_ckpt_list
+
+from ..baseModel import BaseModel
+from ..common.model_builder import EncoderDecoder
+from ..common.util import print_, get_ckpt_list
 
 class Model(BaseModel):
     """Load your trained model and do inference in Nuke"""

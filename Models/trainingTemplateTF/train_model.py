@@ -26,9 +26,11 @@ import scipy.misc
 import numpy as np
 
 import tensorflow as tf
-from util.model_builder import EncoderDecoder
-from util.util import im2uint8, get_filepaths_from_dir, get_ckpt_list, print_
-from util.util import is_exr, read_crop_exr_pair
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from common.model_builder import EncoderDecoder
+from common.util import im2uint8, get_filepaths_from_dir, get_ckpt_list, print_
+from common.util import is_exr, read_crop_exr_pair
 
 class TrainModel(object):
     """Train the EncoderDecoder from the given input and groundtruth data"""
@@ -53,7 +55,9 @@ class TrainModel(object):
             os.makedirs(self.checkpoints_dir)
         self.ckpt_save_name = 'trainingTemplateTF.model'
         # Where to save tensorboard summaries
-        self.summaries_dir = './summaries/'
+        self.summaries_dir = './summaries'
+        if not os.path.exists(self.summaries_dir):
+            os.makedirs(self.summaries_dir)
 
         # Get training dataset as lists of image paths
         self.train_in_data_list = get_filepaths_from_dir(train_in_data_path)
@@ -190,9 +194,9 @@ class TrainModel(object):
             print_("Starting training from scratch\n", 'm')
 
         # Tensorboard summary
-        summary_op = tf.summary.merge_all()
+        summary_op = tf.compat.v1.summary.merge_all()
         summary_name = "data{}_bch{}_ep{}".format(len(self.train_in_data_list), self.batch_size, self.epoch)
-        summary_writer = tf.summary.FileWriter(self.summaries_dir + summary_name, graph=sess.graph, flush_secs=30)
+        summary_writer = tf.compat.v1.summary.FileWriter(os.path.join(self.summaries_dir, summary_name), graph=sess.graph, flush_secs=30)
 
         # Compute loss on validation dataset to check overfitting
         if self.has_val_data:
