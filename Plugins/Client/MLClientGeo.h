@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Foundry.
+// Copyright (c) 2019 Alexander Mishurov.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
 // limitations under the License.
 //*************************************************************************
 
-#ifndef MLCLIENT_H
-#define MLCLIENT_H
+#ifndef MLCLIENTGEO_H
+#define MLCLIENTGEO_H
 
 // Standard plug-in include files.
 #include "DDImage/NukeWrapper.h"
@@ -24,14 +24,7 @@
 // Local include files
 #include "MLClientMixin.h"
 
-//! The Machine Learning (ML) Client plug-in connects Nuke to a Python server to apply ML models to images.
-/*! This plug-in can connect to a server (given a host and port), which responds
-    with a list of available Machine Learning (ML) models and options.
-    On every /a renderStripe() call, the image and model options are sent from Nuke to the server,
-    there the server can process the image by doing Machine Learning inference,
-    finally the resulting image is sent back to Nuke.
-*/
-class MLClient : public MLClientMixin<DD::Image::PlanarIop>
+class MLClientGeo : public MLClientMixin<DD::Image::SourceGeo>
 {
 
 public:
@@ -41,12 +34,15 @@ public:
 
 public:
   //! Constructor. Initialize parent class.
-  MLClient(Node* node);
-  virtual ~MLClient();
+  MLClientGeo(Node* node);
+  virtual ~MLClientGeo();
 
 public:
-  // DDImage::Iop overrides
+  // DDImage::SourceGeo overrides
 
+  //! The op needs both the GeoOp knobs and the MLClientMixin knobs.
+  void knobs(DD::Image::Knob_Callback f);
+  int knob_changed(DD::Image::Knob* );
   //! The maximum number of input connections the operator can have.
   int maximum_inputs() const;
   //! The minimum number of input connections the operator can have.
@@ -57,22 +53,21 @@ public:
   */
   const char* input_label(int input, char* buffer) const;
 
-  bool useStripes() const;
-  bool renderFullPlanes() const;
+  //! Unlike SourceGeo, this op uses the first input for sending data to the server.
+  DD::Image::Iop* default_material_iop() const;
 
   void _validate(bool);
-  void getRequests(const DD::Image::Box& box, const DD::Image::ChannelSet& channels, int count, DD::Image::RequestOutput &reqData) const;
-
+  void get_geometry_hash();
   /*! This function is called by Nuke for processing the current image.
       The image and model options are sent from Nuke to the server,
       there the server can process the image by doing Machine Learning inference,
-      finally the resulting image is sent back to Nuke.
+      finally the resulting data is sent back to Nuke.
       The function tries to reconnect if no connection is set.
   */
-  void renderStripe(DD::Image::ImagePlane& imagePlane);
+  void create_geometry(DD::Image::Scene& scene, DD::Image::GeometryList& out);
 
   //! Information to the plug-in manager of DDNewImage/Nuke.
-  static const DD::Image::Iop::Description description;
+  static const DD::Image::Op::Description description;
 
   //! Return the name of the class.
   const char* Class() const;
@@ -81,15 +76,29 @@ public:
 private:
   // Private functions
 
-  //! Compute specific number of inputs, GeoOp uses one input as a material.
+  //! Computes specific number of inputs, GeoOp uses one input as a material.
   int computed_inputs();
-  //! Return a format of for sending to the server, GeoOp hasn't got output format.
+  //! Returns a format of for sending to the server, GeoOp hasn't got output format.
   DD::Image::Box getFormat() const;
   //! Parse the response messge from the server, and if it contains
-  //! an image, attempt to copy the image to the imagePlane. Return
+  //! a geometry object, attempt to create geometry from the recieved data. Return
   //! true on success, false otherwise and fill in the error string.
-  bool renderOutputBuffer(mlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg);
+  bool drawGeometry(mlserver::RespondWrapper& responseWrapper, DD::Image::Scene& scene,
+                    DD::Image::GeometryList& out, std::string& errorMsg);
+private:
+  // Private member variables
+
+  //! Struct and map for mapping data from the response
+  //! to Nuke's GeoInfo vector attributes.
+  struct FloatAttrib {
+    std::string name;
+    int dim;
+    DD::Image::GroupType group;
+    DD::Image::AttribType type;
+    const google::protobuf::RepeatedField<float>* data;
+  };
+  std::map<std::string, FloatAttrib> floatAttribs;
 
 };
 
-#endif // MLCLIENT_H
+#endif // MLCLIENTGEO_H

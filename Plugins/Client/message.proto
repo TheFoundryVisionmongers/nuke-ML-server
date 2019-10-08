@@ -2,6 +2,15 @@ syntax = "proto2";
 
 package mlserver;
 
+/*
+  A weird workaround yet it works.
+  If plugins linked against the normal protobuf instead of protobuf-lite,
+  it makes impossible to use both the nodes simultaeously.
+  Loading a second shared library while one is already loaded throws
+  "File already exists in database: message.proto"
+*/
+option optimize_for = LITE_RUNTIME;
+
 message RequestWrapper {
 	optional bool info = 1;
 	optional RequestInfo r1 = 2;
