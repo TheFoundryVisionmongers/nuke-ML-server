@@ -1,6 +1,8 @@
 # Installing Nuke Machine Learning Plugin
 
-The Nuke Machine Learning (ML) installation can be divided into compiling the MLClient Nuke node and installing the MLServer using Docker. The MLClient plugin can be compiled on both Linux/MacOS and Windows systems. It communicates with the MLServer which needs to be run on a Linux machine with NVIDIA GPU.
+The Nuke Machine Learning (ML) installation can be divided into compiling the MLClient Nuke node and installing the MLServer using Docker.
+
+The MLClient plugin can be compiled on both Linux/MacOS and Windows systems. It communicates with the MLServer which needs to be run on a Linux machine with NVIDIA GPU.
 
 **Requirements:**
 - Linux with Nuke installed
@@ -65,7 +67,7 @@ Start by installing the Visual Studio Compiler "Build Tools for Visual Studio 20
 
 ### Install Protobuf
 
-We recommend building Protobuf locally as a static library. For reference this section partly follows the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/cmake/README.m) from the Protobuf GitHub repository.
+We recommend building Protobuf locally as a static library. For reference this section partly follows the [installation instructions](https://github.com/protocolbuffers/protobuf/blob/master/cmake/README.md) from the Protobuf GitHub repository.
 
 First open “**x64** Native Tools Command Prompt for VS 2017” executable. Please note it has to be **x64** and not x86.
 
