@@ -20,11 +20,13 @@
 #include <vector>
 #include "message.pb.h"
 
+#include "DDImage/Op.h"
+
 //! Class to parse and store knobs for a given model.
 class MLClientModelManager
 {
   public:
-    explicit MLClientModelManager();
+    explicit MLClientModelManager(DD::Image::Op* parent);
     ~MLClientModelManager();
 
     // Getters of the class
@@ -54,6 +56,7 @@ class MLClientModelManager
     void updateOptions(mlserver::Model& m);
 
   private:
+    DD::Image::Op* _parent;
     std::vector<int> _dynamicBoolValues;
     std::vector<int> _dynamicIntValues;
     std::vector<float> _dynamicFloatValues;

@@ -16,8 +16,7 @@
 #ifndef MLCLIENTCOMMS_H
 #define MLCLIENTCOMMS_H
 
-// Includes for sockets and protobuf
-#include <netdb.h>
+// Protobuf headers
 #include "message.pb.h"
 
 using byte = unsigned char;

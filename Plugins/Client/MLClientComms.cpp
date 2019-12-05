@@ -13,15 +13,25 @@
 // limitations under the License.
 //*************************************************************************
 
-// Includes for sockets and protobuf
 #include <iostream>
 #include <iomanip>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/socket.h>
 #include <cstring>
 #include <sstream>
+#include <chrono>
+#include <thread>
+
+// Platform specific sockets
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h> // for sockaddr_in6
+#else
+#include <unistd.h>   // for usleep()
+#include <fcntl.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#endif
+
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
@@ -30,8 +40,7 @@
 // Static consts
 
 /*static*/ const int MLClientComms::kNumberOfBytesHeaderSize = 12;
-
-/*static*/ const int MLClientComms::kTimeout = 500000;
+/*static*/ const int MLClientComms::kTimeout = 500000;    // in microseconds
 /*static*/ const int MLClientComms::kMaxNumberOfTry = 5;
 
 // Static non-const variables
@@ -89,19 +98,19 @@ bool MLClientComms::sendInfoRequestAndReadInfoResponse(mlserver::RespondWrapper&
 {
   // Try connect if we haven't already
   connectLoop();
-  if(!isConnected()) {
+  if (!isConnected()) {
     errorMsg = "Unable to connect to server.";
     return false;
   }
 
   // Send the request for server & model info, and parse the response.
-  if(!sendInfoRequest()) {
+  if (!sendInfoRequest()) {
     errorMsg = "Error sending info request.";
     return false;
   }
 
   // Check that the comms read the response OK
-  if(!readInfoResponse(responseWrapper)) {
+  if (!readInfoResponse(responseWrapper)) {
     errorMsg = "Error reading info response.";
     return false;
   }
@@ -119,19 +128,19 @@ bool MLClientComms::sendInferenceRequestAndReadInferenceResponse(mlserver::Reque
 {
   // Try connect if we haven't already
   connectLoop();
-  if(!isConnected()) {
+  if (!isConnected()) {
     errorMsg = "Unable to connect to server.";
     return false;
   }
 
   // Send the inference request.
-  if(!sendInferenceRequest(requestInference)) {
+  if (!sendInferenceRequest(requestInference)) {
     errorMsg = "Error sending inference request.";
     return false;
   }
 
   // Await and process the response.
-  if(!readInferenceResponse(responseWrapper)) {
+  if (!readInferenceResponse(responseWrapper)) {
     errorMsg = "Error reading inference response.";
     return false;
   }
@@ -151,7 +160,7 @@ bool MLClientComms::sendInferenceRequestAndReadInferenceResponse(mlserver::Reque
 void MLClientComms::connectLoop()
 {
   // First test if there's an existing connected, if so return immediately.
-  if ( isConnected() ) {
+  if (isConnected()) {
     return;
   }
 
@@ -159,7 +168,7 @@ void MLClientComms::connectLoop()
   int i = 0;
   std::string errorStr;
   while (!setupConnection(errorStr)) {
-    usleep(kTimeout);
+    std::this_thread::sleep_for(std::chrono::microseconds(kTimeout));
     i++;
     if (i >= kMaxNumberOfTry) {
       std::stringstream strStrm;
@@ -214,12 +223,93 @@ bool MLClientComms::setupConnection(std::string& errorStr)
     _socket = socket(aiResult->ai_family, aiResult->ai_socktype, aiResult->ai_protocol);
     if (_socket < 0) {
       std::stringstream ss;
-      ss << "socket error: " << gai_strerror(_socket);
+      ss << "Socket error: " << gai_strerror(_socket);
       errorStr = ss.str();
       MLClientComms::Vprint(errorStr);
       return false;
     }
 
+#ifdef _WIN32
+    // Add socket option
+    int enable = TRUE;
+    if (setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&enable, sizeof(BOOL)) < 0) {
+      errorStr = "setsockopt(SO_REUSEADDR) failed";
+      MLClientComms::Vprint(errorStr);
+      return false;
+    }
+
+    // Set non-blocking connect socket
+    u_long iMode = 1;
+    int iResult = ioctlsocket(_socket, FIONBIO, &iMode);
+    if (iResult != NO_ERROR) {
+      std::stringstream ss;
+      ss << "ioctlsocket failed with error: " << iResult;
+      errorStr = ss.str();
+      MLClientComms::Vprint(errorStr);
+      return false;
+    }
+
+    // Connect to the server using the socket
+    status = connect(_socket, aiResult->ai_addr, aiResult->ai_addrlen);
+
+    fd_set writefds, errfds;
+    TIMEVAL timeout;
+    // Trying to connect with timeout
+    if (status == SOCKET_ERROR)
+    {
+      int connectError = WSAGetLastError();
+      // If resource are temporarily unavailable, wait for connection to finish
+      if (connectError == WSAEWOULDBLOCK)
+      {
+        timeout.tv_sec = 1; // timeout in seconds to wait before failing to connect to host and port
+        timeout.tv_usec = 0;
+        // Re-enable file descriptors fd that were cleared after last select() return
+        FD_ZERO(&writefds);
+        FD_ZERO(&errfds);
+        FD_SET(_socket, &writefds);
+        FD_SET(_socket, &errfds);
+
+        status = select(_socket + 1, NULL, &writefds, &errfds, &timeout);
+        if (status == 0) // Unnable to select socket within the time limit of timeout
+        {
+          errorStr = "Timeout reached when trying to select socket";
+          MLClientComms::Vprint(errorStr);
+          return false;
+        }
+        else // file descriptors are ready to write or have error condition pending
+        {
+          if (FD_ISSET(_socket, &writefds))
+          {
+            // Socket is selected and ready to write
+          }
+          if (FD_ISSET(_socket, &errfds))
+          {
+            errorStr = "Error in socket selection";
+            MLClientComms::Vprint(errorStr);
+            return false;
+          }
+        }
+      }
+      else
+      {
+        std::stringstream ss;
+        ss << "Socket error connecting " << WSAGetLastError();
+        errorStr = ss.str();
+        MLClientComms::Vprint(errorStr);
+        return false;
+      }
+    }
+
+    iMode = 0;
+    iResult = ioctlsocket(_socket, FIONBIO, &iMode);
+    if (iResult != NO_ERROR) {
+      std::stringstream ss;
+      ss << "ioctlsocket failed with error: " << iResult;
+      errorStr = ss.str();
+      MLClientComms::Vprint(errorStr);
+      return false;
+    }
+#else
     // Add socket option
     int enable = 1;
     if (setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
@@ -232,7 +322,7 @@ bool MLClientComms::setupConnection(std::string& errorStr)
     // Set non-blocking connect socket
     if ((socket_flags = fcntl(_socket, F_GETFL, NULL)) < 0) { // get socket flag argument
       std::stringstream ss;
-      ss << "socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")";
+      ss << "Socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")";
       errorStr = ss.str();
       MLClientComms::Vprint(errorStr);
       return false;
@@ -240,7 +330,7 @@ bool MLClientComms::setupConnection(std::string& errorStr)
     socket_flags |= O_NONBLOCK; // add non-blocking flag to the socket flags
     if (fcntl(_socket, F_SETFL, socket_flags) < 0) { // update socket flags
       std::stringstream ss;
-      ss << "socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")";
+      ss << "Socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")";
       errorStr = ss.str();
       MLClientComms::Vprint(errorStr);
       return false;
@@ -250,17 +340,17 @@ bool MLClientComms::setupConnection(std::string& errorStr)
     status = connect(_socket, aiResult->ai_addr, aiResult->ai_addrlen);
 
     int valopt;
-    fd_set myset;
-    struct timeval tv;
+    fd_set writefds;
+    struct timeval timeout;
     // Trying to connect with timeout
     if (status < 0) {
       if (errno == EINPROGRESS) {
-        tv.tv_sec = 1; // timeout in seconds to wait before failing to connect to host and port
-        tv.tv_usec = 0;
+        timeout.tv_sec = 1; // timeout in seconds to wait before failing to connect to host and port
+        timeout.tv_usec = 0;
         // Re-enable file descriptors fd that were cleared after last select() return
-        FD_ZERO(&myset);
-        FD_SET(_socket, &myset);
-        status = select(_socket + 1, NULL, &myset, NULL, &tv);
+        FD_ZERO(&writefds);
+        FD_SET(_socket, &writefds);
+        status = select(_socket + 1, NULL, &writefds, NULL, &timeout);
         if (status > 0) {
           // Socket selected for write
           getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &aiResult->ai_addrlen);
@@ -278,7 +368,7 @@ bool MLClientComms::setupConnection(std::string& errorStr)
       }
       else {
         std::stringstream ss;
-        ss << "socket error connecting " << errno << " " << strerror(errno);
+        ss << "Socket error connecting " << errno << " " << strerror(errno);
         errorStr = ss.str();
         MLClientComms::Vprint(errorStr);
         return false;
@@ -287,7 +377,7 @@ bool MLClientComms::setupConnection(std::string& errorStr)
     // Set to blocking mode again
     if ((socket_flags = fcntl(_socket, F_GETFL, NULL)) < 0) { // get socket flag argument
       std::stringstream ss;
-      ss << "socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")";
+      ss << "Socket error fcntl(..., F_GETFL) (" << strerror(errno) << ")";
       errorStr = ss.str();
       MLClientComms::Vprint(errorStr);
       return false;
@@ -295,11 +385,12 @@ bool MLClientComms::setupConnection(std::string& errorStr)
     socket_flags &= (~O_NONBLOCK); // remove non-blocking flag from the socket
     if (fcntl(_socket, F_SETFL, socket_flags) < 0) { // update socket flags
       std::stringstream ss;
-      ss << "socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")";
+      ss << "Socket error fcntl(..., F_SETFL) (" << strerror(errno) << ")";
       errorStr = ss.str();
       MLClientComms::Vprint(errorStr);
       return false;
     }
+#endif
 
     inet_ntop(aiResult->ai_family, getInAddr((struct sockaddr *)aiResult->ai_addr), s, sizeof s);
 
@@ -338,7 +429,7 @@ bool MLClientComms::sendInfoRequest()
   // Generate the data which should be sent over the network
   std::string requestStr;
   requestWrapper.SerializeToString(&requestStr);
-  int length = requestStr.size();
+  size_t length = requestStr.size();
   MLClientComms::Vprint("Serialized message");
 
   // Creating header
@@ -361,7 +452,7 @@ bool MLClientComms::sendInfoRequest()
   MLClientComms::Vprint("Copied to char array");
 
   // Send header with number of bytes
-  if ((bytecount = send(_socket, (void *)&toSend[0], kNumberOfBytesHeaderSize + length, 0)) == -1) {
+  if ((bytecount = send(_socket, (const char *)&toSend[0], kNumberOfBytesHeaderSize + length, 0)) == -1) {
     std::stringstream ss;
     ss << "Error sending data " << errno;
     MLClientComms::Vprint(ss.str());
@@ -382,6 +473,7 @@ bool MLClientComms::readInfoResponse(mlserver::RespondWrapper& responseWrapper)
   // Read header first
   MLClientComms::Vprint("Reading header data");
   char hdrBuffer[kNumberOfBytesHeaderSize];
+
   if ((bytecount = recv(_socket, hdrBuffer, kNumberOfBytesHeaderSize, 0)) == -1) {
     MLClientComms::Vprint("Error receiving data.");
     return false;
@@ -398,12 +490,11 @@ bool MLClientComms::readInfoResponse(google::protobuf::uint32 siz, mlserver::Res
   // Reading message data
   MLClientComms::Vprint("Reading data of size: " + std::to_string(siz));
   int bytecount;
-  char buffer[siz];
-
+  std::vector<char> buffer(siz);
   responseWrapper.set_info(true);
 
   // Read the entire buffer
-  if ((bytecount = recv(_socket, (void *)buffer, siz, 0)) == -1) {
+  if ((bytecount = recv(_socket, &buffer[0], siz, 0)) == -1) {
     std::stringstream ss;
     ss << "Error receiving data " << errno;
     MLClientComms::Vprint(ss.str());
@@ -412,7 +503,7 @@ bool MLClientComms::readInfoResponse(google::protobuf::uint32 siz, mlserver::Res
 
   // Deserialize using protobuf functions
   MLClientComms::Vprint("Deserializing message");
-  google::protobuf::io::ArrayInputStream ais(buffer, siz);
+  google::protobuf::io::ArrayInputStream ais(&buffer[0], siz);
   google::protobuf::io::CodedInputStream codedInput(&ais);
   google::protobuf::io::CodedInputStream::Limit msgLimit = codedInput.PushLimit(siz);
   // Fill the message responseWrapper with a protocol buffer parsed from codedInput
@@ -436,7 +527,7 @@ bool MLClientComms::sendInferenceRequest(mlserver::RequestInference& requestInfe
   // Serialize message
   std::string requestStr;
   requestWrapper.SerializeToString(&requestStr);
-  int length = requestStr.size();
+  size_t length = requestStr.size();
   MLClientComms::Vprint("Serialized message");
 
   // Creating header
@@ -459,7 +550,7 @@ bool MLClientComms::sendInferenceRequest(mlserver::RequestInference& requestInfe
   MLClientComms::Vprint("Copied to char array");
 
   // Send header with number of bytes
-  if ((bytecount = send(_socket, (void *)&toSend[0], kNumberOfBytesHeaderSize + length, 0)) == -1) {
+  if ((bytecount = send(_socket, (const char *)&toSend[0], kNumberOfBytesHeaderSize + length, 0)) == -1) {
     isConnected();
     std::stringstream ss;
     ss << "Error sending data " << errno;
@@ -478,8 +569,8 @@ bool MLClientComms::sendInferenceRequest(mlserver::RequestInference& requestInfe
 //! previously sent to the server.
 bool MLClientComms::readInferenceResponse(mlserver::RespondWrapper& responseWrapper)
 {
-  int bytecount;
-  
+  size_t bytecount;
+
   // Read header first
   MLClientComms::Vprint("Reading header data");
   char hdrBuffer[kNumberOfBytesHeaderSize];
@@ -502,15 +593,24 @@ bool MLClientComms::readInferenceResponse(google::protobuf::uint32 siz, mlserver
   // Read the buffer
   std::string output;
   char buffer[1024];
-  int n;
-  while ((errno = 0, (n = recv(_socket, buffer, sizeof(buffer), 0)) > 0) ||
-         errno == EINTR) {
-    if (n > 0) {
-      output.append(buffer, n);
+  size_t bytecount;
+#ifdef _WIN32
+  do {
+    bytecount = recv(_socket, buffer, sizeof(buffer), 0);
+    if (bytecount > 0) {
+      output.append(buffer, bytecount);
+    }
+  } while (bytecount > 0); // as long as data is received and there are no error
+#else
+  while ((errno = 0, (bytecount = recv(_socket, buffer, sizeof(buffer), 0)) > 0) ||
+    errno == EINTR) {
+    if (bytecount > 0) {
+      output.append(buffer, bytecount);
     }
   }
+#endif
 
-  if (n < 0) {
+  if (bytecount < 0) {
     MLClientComms::Vprint("Error receiving data.");
     return false;
   }
@@ -531,9 +631,13 @@ bool MLClientComms::readInferenceResponse(google::protobuf::uint32 siz, mlserver
 void MLClientComms::closeConnection()
 {
   // Check if a valid socket is open
-  if(_socket) {
+  if (_socket) {
     // If so, close & reset the state variables
+#ifdef _WIN32
+    closesocket(_socket);
+#else
     close(_socket);
+#endif
     _socket = 0;
     MLClientComms::Vprint("Closed connection\n"
       "-----------------------------------------------");
@@ -544,7 +648,7 @@ void MLClientComms::closeConnection()
 google::protobuf::uint32 MLClientComms::readHdr(char* buf)
 {
   google::protobuf::uint32 size;
-  char tmp[kNumberOfBytesHeaderSize+1];
+  char tmp[kNumberOfBytesHeaderSize + 1];
   std::memcpy(tmp, buf, kNumberOfBytesHeaderSize);
   tmp[kNumberOfBytesHeaderSize] = '\0';
   size = atoi(tmp);

@@ -14,14 +14,16 @@
 //*************************************************************************
 
 #include "MLClientModelManager.h"
+#include "DDImage/Knob.h"
 
-MLClientModelManager::MLClientModelManager()
+MLClientModelManager::MLClientModelManager(DD::Image::Op* parent)
+: _parent(parent)
 { }
 
 MLClientModelManager::~MLClientModelManager()
 { }
 
-
+//! Parse options from the server model /m to the MLClientModelManager
 void MLClientModelManager::parseOptions(const mlserver::Model& m)
 {
   clear();
@@ -68,61 +70,87 @@ void MLClientModelManager::parseOptions(const mlserver::Model& m)
   }
 }
 
+//! Use current knob values to update options on the server model /m
+//! in order to later request inference on this model
 void MLClientModelManager::updateOptions(mlserver::Model& m)
 {
   m.clear_bool_options();
   for (int i = 0; i < _dynamicBoolValues.size(); i++) {
     mlserver::BoolAttrib* option = m.add_bool_options();
     option->set_name(_dynamicBoolNames[i]);
-    option->add_values(_dynamicBoolValues[i]);
+    DD::Image::Knob* k = _parent->knob(_dynamicBoolNames[i].c_str());
+    bool val = false;
+    if (k != nullptr) {
+      val = k->get_value();
+    }
+    option->add_values(val);
   }
 
   m.clear_int_options();
   for (int i = 0; i < _dynamicIntValues.size(); i++) {
     mlserver::IntAttrib* option = m.add_int_options();
     option->set_name(_dynamicIntNames[i]);
-    option->add_values(_dynamicIntValues[i]);
+    DD::Image::Knob* k = _parent->knob(_dynamicIntNames[i].c_str());
+    int val = 0;
+    if (k != nullptr) {
+      val = k->get_value();
+    }
+    option->add_values(val);
   }
 
   m.clear_float_options();
   for (int i = 0; i < _dynamicFloatValues.size(); i++) {
     mlserver::FloatAttrib* option = m.add_float_options();
     option->set_name(_dynamicFloatNames[i]);
-    option->add_values(_dynamicFloatValues[i]);
+    DD::Image::Knob* k = _parent->knob(_dynamicFloatNames[i].c_str());
+    float val = 0.0f;
+    if (k != nullptr) {
+      val = k->get_value();
+    }
+    option->add_values(val);
   }
 
   m.clear_string_options();
   for (int i = 0; i < _dynamicStringValues.size(); i++) {
     mlserver::StringAttrib* option = m.add_string_options();
     option->set_name(_dynamicStringNames[i]);
-    option->add_values(_dynamicStringValues[i]);
+    DD::Image::Knob* k = _parent->knob(_dynamicStringNames[i].c_str());
+    const char* val = "";
+    if(k != nullptr) {
+      val = k->get_text();
+      if (val==nullptr) {
+        val = "";
+      }
+    }
+    option->add_values(val);
   }
 
   m.clear_button_options();
   for (int i = 0; i < _dynamicButtonValues.size(); i++) {
     mlserver::BoolAttrib* option = m.add_button_options();
     option->set_name(_dynamicButtonNames[i]);
+    // Get member value instead of knob value to catch button push
     option->add_values(_dynamicButtonValues[i]);
   }
 }
 
 int MLClientModelManager::getNumOfFloats() const
-{ 
+{
   return _dynamicFloatValues.size();
 }
 
 int MLClientModelManager::getNumOfInts() const
-{ 
+{
   return _dynamicIntValues.size();
 }
 
 int MLClientModelManager::getNumOfBools() const
-{ 
+{
   return _dynamicBoolValues.size();
 }
 
 int MLClientModelManager::getNumOfStrings() const
-{ 
+{
   return _dynamicStringValues.size();
 }
 
@@ -132,53 +160,53 @@ int MLClientModelManager::getNumOfButtons() const
 }
 
 std::string MLClientModelManager::getDynamicBoolName(int idx)
-{ 
+{
   return _dynamicBoolNames[idx];
 }
 
 std::string MLClientModelManager::getDynamicFloatName(int idx)
-{ 
+{
   return _dynamicFloatNames[idx];
 }
 
 std::string MLClientModelManager::getDynamicIntName(int idx)
-{ 
+{
   return _dynamicIntNames[idx];
 }
 
 std::string MLClientModelManager::getDynamicStringName(int idx)
-{ 
+{
   return _dynamicStringNames[idx];
 }
 
 std::string MLClientModelManager::getDynamicButtonName(int idx)
-{ 
+{
   return _dynamicButtonNames[idx];
 }
 
 float* MLClientModelManager::getDynamicFloatValue(int idx)
-{ 
+{
   return &_dynamicFloatValues[idx];
 }
 
 int* MLClientModelManager::getDynamicIntValue(int idx)
-{ 
+{
   return &_dynamicIntValues[idx];
 }
 
 bool* MLClientModelManager::getDynamicBoolValue(int idx)
-{ 
-  return (bool* )&_dynamicBoolValues[idx];
+{
+  return (bool*)&_dynamicBoolValues[idx];
 }
 
 std::string* MLClientModelManager::getDynamicStringValue(int idx)
-{ 
+{
   return &_dynamicStringValues[idx];
 }
 
 bool* MLClientModelManager::getDynamicButtonValue(int idx)
-{ 
-  return (bool* )&_dynamicButtonValues[idx];
+{
+  return (bool*)&_dynamicButtonValues[idx];
 }
 
 void MLClientModelManager::setDynamicButtonValue(int idx, int value)

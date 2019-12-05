@@ -18,7 +18,7 @@
 #include "MLClient.h"
 
 const char* const MLClient::kClassName = "MLClient";
-const char* const MLClient::kHelpString = 
+const char* const MLClient::kHelpString =
   "Connects to a Python server for Machine Learning inference.";
 
 const char* const MLClient::kDefaultHostName = "172.17.0.2";
@@ -54,6 +54,7 @@ MLClient::MLClient(Node* node)
 , _modelSelected(false)
 , _showDynamic(false)
 , _numNewKnobs(0)
+, _modelManager(this)
 { }
 
 MLClient::~MLClient() {}
@@ -76,7 +77,7 @@ int MLClient::minimum_inputs() const
     return _numInputs[_chosenModel];
   }
   else {
-    return 1; 
+    return 1;
   }
 }
 
@@ -111,14 +112,24 @@ bool MLClient::renderFullPlanes() const
 
 MLClientModelManager& MLClient::getModelManager()
 {
-  return _modelManager;
+  return dynamic_cast<MLClient*>(firstOp())->_modelManager;
+}
+
+int MLClient::getNumNewKnobs()
+{
+  return dynamic_cast<MLClient*>(firstOp())->_numNewKnobs;
+}
+
+void MLClient::setNumNewKnobs(int i)
+{
+  dynamic_cast<MLClient*>(firstOp())->_numNewKnobs = i;
 }
 
 void MLClient::_validate(bool forReal)
 {
   // Try connect to the server, erroring if it can't connect.
   std::string connectErrorMsg;
-  if(!haveValidModelInfo() && !refreshModelsAndKnobsFromServer(connectErrorMsg)) {
+  if (!haveValidModelInfo() && !refreshModelsAndKnobsFromServer(connectErrorMsg)) {
     error(connectErrorMsg.c_str());
   }
   // The only other thing needed to do in validate is copy the image info.
@@ -219,7 +230,6 @@ bool MLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
       return false;
     }
   }
-
   // Parse message and fill in menu items for enumeration knob
   _serverModels.clear();
   _numInputs.clear();
@@ -257,6 +267,7 @@ bool MLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
 
   if (_chosenModel >= (int)numModels) {
     _selectedModelknob->set_value(0);
+    _chosenModel = 0;
   }
 
   // Set member variables to indicate our connections and model set-up succeeded.
@@ -265,9 +276,10 @@ bool MLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
 
   // Update the dynamic knobs
   const mlserver::Model m = _serverModels[_chosenModel];
-  _modelManager.parseOptions(m);
-  _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
-
+  if (this == this->firstOp()) {
+    getModelManager().parseOptions(m);
+  }
+  setNumNewKnobs(replace_knobs(knob("models"), getNumNewKnobs(), addDynamicKnobs, this->firstOp()));
   // Return true if control made it here, success.
   return true;
 }
@@ -305,7 +317,7 @@ bool MLClient::processImage(const std::string& hostStr, int port,
 
     // Validate ourself before proceeding, this ensures if this is being invoked by a button press
     // then it's set up correctly.
-    if( !tryValidate(/*for_real*/true) ) {
+    if (!tryValidate(/*for_real*/true)) {
       errorMsg = "Could not set-up node correctly.";
       return false;
     }
@@ -323,15 +335,15 @@ bool MLClient::processImage(const std::string& hostStr, int port,
     // Create inference message
     mlserver::RequestInference* requestInference = new mlserver::RequestInference;
     mlserver::Model* m = new mlserver::Model(_serverModels[_chosenModel]);
-    _modelManager.updateOptions(*m);
+    getModelManager().updateOptions(*m);
     requestInference->set_allocated_model(m);
 
     // Parse image. TODO: Check for multiple inputs, different channel size
     for (int i = 0; i < node_inputs(); i++) {
       // Create an ImagePlane, and read each input into it.
       // Get our input & sanity check
-      DD::Image::Iop* inputIop = dynamic_cast<DD::Image::Iop*>( input(i) );
-      if ( inputIop == NULL ) {
+      DD::Image::Iop* inputIop = dynamic_cast<DD::Image::Iop*>(input(i));
+      if (inputIop == NULL) {
         errorMsg = "Input is empty or not connected.";
         return false;
       }
@@ -344,7 +356,7 @@ bool MLClient::processImage(const std::string& hostStr, int port,
 
       // Try validate & request the input, this should be quick if the data
       // has already been requested.
-      if(!inputIop->tryValidate(/*force*/true) ) {
+      if (!inputIop->tryValidate(/*force*/true)) {
         errorMsg = "Unable to validate input.";
         return false;
       }
@@ -401,11 +413,11 @@ bool MLClient::processImage(const std::string& hostStr, int port,
       for (int z = 0; z < kDefaultNumberOfChannels; z++) {
         const int chanStride = z * imageFormat.w() * imageFormat.h();
 
-        for(int ry = fy; ry < ft; ry++) {
+        for (int ry = fy; ry < ft; ry++) {
           const int rowStride = ry * imageFormat.w();
 
           ImageTileReadOnlyPtr tile = plane.readableAt(ry, z);
-          for(int rx = fx, currentPos = 0; rx < fr; rx++) {
+          for (int rx = fx, currentPos = 0; rx < fr; rx++) {
             size_t fullPos = chanStride + rowStride + currentPos++;
             floatBuffer[fullPos] = tile[rx];
           }
@@ -428,7 +440,7 @@ bool MLClient::processImage(const std::string& hostStr, int port,
         return false;
       }
       // Try pull the model info into the responseWrapper
-      if(!comms.sendInferenceRequestAndReadInferenceResponse(*requestInference, responseWrapper, errorMsg)) {
+      if (!comms.sendInferenceRequestAndReadInferenceResponse(*requestInference, responseWrapper, errorMsg)) {
         // If it failed, the error is set, return.
         return false;
       }
@@ -447,14 +459,14 @@ bool MLClient::processImage(const std::string& hostStr, int port,
 bool MLClient::renderOutputBuffer(mlserver::RespondWrapper& responseWrapper, DD::Image::ImagePlane& imagePlane, std::string& errorMsg)
 {
   // Sanity check, make sure the response actually contains an image.
-  if(!responseWrapper.has_r2() || responseWrapper.r2().num_images() == 0) {
+  if (!responseWrapper.has_r2() || responseWrapper.r2().num_images() == 0) {
     errorMsg = "No image found in message response.";
     return false;
   }
 
   // Validate ourself before proceeding, this ensures if this is being invoked by a button press
   // then it's set up correctly. This will return immediately if it's already set up.
-  if( !tryValidate(/*for_real*/true) ) {
+  if (!tryValidate(/*for_real*/true)) {
     errorMsg = "Could not set-up node correctly.";
     return false;
   }
@@ -466,7 +478,7 @@ bool MLClient::renderOutputBuffer(mlserver::RespondWrapper& responseWrapper, DD:
   // format (note, the bounds of the imagePlane may be different, e.g. if there's
   // a Crop on the input.)
   const Box imageFormat = info().format();
-  if(imageMessage.width() != imageFormat.w() || imageMessage.height() != imageFormat.h()) {
+  if (imageMessage.width() != imageFormat.w() || imageMessage.height() != imageFormat.h()) {
     errorMsg = "Received Image has dimensions different than expected";
     return false;
   }
@@ -484,28 +496,36 @@ bool MLClient::renderOutputBuffer(mlserver::RespondWrapper& responseWrapper, DD:
   // what's required to fill in imagePlane, and what's been returned
   // in the response. This allows us to gracefully handle cases where the returned
   // image has too few channels, or when the imagePlane has too many.
-  const size_t numChannelsToCopy =  (imageMessage.channels() < imagePlane.channels().size()) ? imageMessage.channels() : imagePlane.channels().size();
-
-  // Allow the imagePlane to be writable
-  imagePlane.makeWritable();
+  const size_t numChannelsToCopy = (imageMessage.channels() < imagePlane.channels().size()) ? imageMessage.channels() : imagePlane.channels().size();
 
   // Copy the data
   const char* imageByteDataPtr = imageMessage.image().c_str();
+
+  // Sanity check our image has the correct number of elements
+  const size_t numImageElements = imageMessage.image().size() / sizeof(float);
+  const size_t numImageElementsToCopy = numChannelsToCopy * (ft - fy) * (fr - fx);
+
+  if (numImageElements < numImageElementsToCopy) {
+    errorMsg = "Received Image has insuffient elements.";
+    return false;
+  }
+
+  // Allow the imagePlane to be writable
+  imagePlane.makeWritable();
 
   float* imageFloatDataPtr = (float*)imageByteDataPtr;
   for (int z = 0; z < numChannelsToCopy; z++) {
     const int chanStride = z * imageFormat.w() * imageFormat.h();
 
-    for(int ry = fy; ry < ft; ry++) {
+    for (int ry = fy; ry < ft; ry++) {
       const int rowStride = ry * imageFormat.w();
 
-      for(int rx = fx, currentPos = 0; rx < fr; rx++) {
+      for (int rx = fx, currentPos = 0; rx < fr; rx++) {
         int fullPos = chanStride + rowStride + currentPos++;
-        imagePlane.writableAt(rx, ry, z)  = imageFloatDataPtr[fullPos];
+        imagePlane.writableAt(rx, ry, z) = imageFloatDataPtr[fullPos];
       }
     }
   }
-
   // If this is reached here, return true for success
   return true;
 }
@@ -592,7 +612,7 @@ int MLClient::knob_changed(Knob* knobChanged)
 
   if (knobChanged->is("connect")) {
     std::string connectErrorMsg;
-    if(!refreshModelsAndKnobsFromServer(connectErrorMsg)) {
+    if (!refreshModelsAndKnobsFromServer(connectErrorMsg)) {
       error(connectErrorMsg.c_str());
     }
     return 1;
@@ -600,26 +620,26 @@ int MLClient::knob_changed(Knob* knobChanged)
 
   if (knobChanged->is("models")) {
     // Sanity check that some models exist
-    if(haveValidModelInfo()) {
+    if (haveValidModelInfo()) {
       const mlserver::Model m = _serverModels[_chosenModel];
-      _modelManager.parseOptions(m);
-      _numNewKnobs = replace_knobs(knob("models"), _numNewKnobs, addDynamicKnobs, this->firstOp());
+      getModelManager().parseOptions(m);
+      setNumNewKnobs(replace_knobs(knob("models"), getNumNewKnobs(), addDynamicKnobs, this->firstOp()));
     }
     return 1;
   }
 
   // Check if dynamic button is pressed
   for (int i = 0; i < getModelManager().getNumOfButtons(); i++) {
-    if(knobChanged->is(getModelManager().getDynamicButtonName(i).c_str())){
+    if (knobChanged->is(getModelManager().getDynamicButtonName(i).c_str())) {
       // Set current button to true (pressed) for model inference
-      getModelManager().setDynamicButtonValue(i, 1);
+      getModelManager().setDynamicButtonValue(i, true);
       // Set up our error string
       std::string errorMsg;
       // Set up our incoming response message structure.
       mlserver::RespondWrapper responseWrapper;
       // Wrap up our image data to be sent, send it, and
       // retrieve the response.
-      if(!processImage(_host, _port, responseWrapper, errorMsg)) {
+      if (!processImage(_host, _port, responseWrapper, errorMsg)) {
         error(errorMsg.c_str());
       }
 
@@ -642,7 +662,7 @@ int MLClient::knob_changed(Knob* knobChanged)
         }
       }
       // Set current button to false (unpressed)
-      getModelManager().setDynamicButtonValue(i, 0);
+      getModelManager().setDynamicButtonValue(i, false);
       return 1;
     }
   }
@@ -651,16 +671,16 @@ int MLClient::knob_changed(Knob* knobChanged)
 
 //! Return the name of the class.
 const char* MLClient::Class() const
-{ 
+{
   return MLClient::kClassName;
 }
 
 const char* MLClient::node_help() const
-{ 
+{
   return MLClient::kHelpString;
 }
 
 bool MLClient::getShowDynamic() const
-{ 
+{
   return _showDynamic && haveValidModelInfo();
 }

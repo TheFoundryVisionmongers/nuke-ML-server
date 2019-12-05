@@ -8,6 +8,10 @@ set (ML_CLIENT_SOURCES
 )
 
 find_package(Protobuf REQUIRED)
+if (WIN32)
+	find_library(PROTOBUF_LIBRARY NAME libprotobuf PATHS ${Protobuf_LIBRARIES})
+endif()
+
 # Compile protobuf .cpp and .h files out of message.proto
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS message.proto)
 list(APPEND ML_CLIENT_SOURCES ${PROTO_SRCS}) # add message.pb.cc
@@ -29,9 +33,16 @@ set_target_properties (MLClient PROPERTIES PREFIX "")
 target_include_directories(MLClient PRIVATE
     ${NUKE_INSTALL_PATH}/include
     ${CMAKE_CURRENT_BINARY_DIR} # include message.pb.h
-    ${PROTOBUF_INCLUDE_DIRS}
+    ${Protobuf_INCLUDE_DIR}
 )
+
 target_link_libraries(MLClient
     ${PROTOBUF_LIBRARY}
     ${DDIMAGE_LIBRARY}
 )
+
+if (WIN32)
+    target_link_libraries(MLClient
+        ws2_32.lib  # include windows socket library
+    )
+endif (WIN32)
