@@ -90,21 +90,21 @@ class Model(BaseModel):
             # Initialise input placeholder size
             self.curr_height = new_H; self.curr_width = new_W
             # Initialise tensorflow graph
-            tf.reset_default_graph()
-            config = tf.ConfigProto()
+            tf.compat.v1.reset_default_graph()
+            config = tf.compat.v1.ConfigProto()
             config.gpu_options.allow_growth=True
-            self.sess=tf.Session(config=config)
-            self.input = tf.placeholder(tf.float32, shape=[self.batch_size, new_H, new_W, channels])
+            self.sess=tf.compat.v1.Session(config=config)
+            self.input = tf.compat.v1.placeholder(tf.float32, shape=[self.batch_size, new_H, new_W, channels])
             self.model = EncoderDecoder(self.n_levels, self.scale, channels)
             self.infer_op = self.model(self.input, reuse=False)
             # Load model checkpoint having the longest training (highest step)
-            self.saver = tf.train.Saver()
+            self.saver = tf.compat.v1.train.Saver()
             self.load(self.sess, self.checkpoints_dir)
             self.prev_ckpt_name = self.checkpoint_name
 
         elif self.curr_height != new_H or self.curr_width != new_W:
             # Modify input placeholder size
-            self.input = tf.placeholder(tf.float32, shape=[self.batch_size, new_H, new_W, channels])
+            self.input = tf.compat.v1.placeholder(tf.float32, shape=[self.batch_size, new_H, new_W, channels])
             self.infer_op = self.model(self.input, reuse=False)
             # Update image height and width
             self.curr_height = new_H; self.curr_width = new_W

@@ -105,11 +105,10 @@ class BaseModel(object):
         """
         a = 0.055
         x = np.clip(x, 0, 1)
-        np_array = np.where(x < 0.04045,
-                            x / 12.92,
-                            pow(((x + a) / (1 + a)), 2.4))
-
-        return np_array
+        mask = x < 0.04045
+        x[mask] /= 12.92
+        x[mask!=True] = np.exp(2.4 * (np.log(x[mask!=True] + a) - np.log(1 + a)))
+        return x
 
     def linear_to_srgb(self, x):
         """Transform the image from linear to sRGB.
@@ -119,8 +118,7 @@ class BaseModel(object):
         """
         a = 0.055
         x = np.clip(x, 0, 1)
-        np_array = np.where(x <= 0.0031308,
-                            x * 12.92,
-                            (1 + a) * pow(x, 1 / 2.4) - a)
-
-        return np_array
+        mask = x <= 0.0031308
+        x[mask] *= 12.92
+        x[mask!=True] = np.exp(np.log(1 + a) + (1/2.4) * np.log(x[mask!=True])) - a
+        return x

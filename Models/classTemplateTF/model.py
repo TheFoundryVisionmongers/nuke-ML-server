@@ -73,10 +73,10 @@ class Model(BaseModel):
 
         if not hasattr(self, 'model'):
             # Initialise tensorflow graph
-            tf.reset_default_graph()
-            config = tf.ConfigProto()
+            tf.compat.v1.reset_default_graph()
+            config = tf.compat.v1.ConfigProto()
             config.gpu_options.allow_growth=True
-            self.sess=tf.Session(config=config)
+            self.sess=tf.compat.v1.Session(config=config)
             # Load most recent trained model
             self.model = self.load_model()
             self.class_labels = (self.checkpoint_name.split('.')[0]).split('_')

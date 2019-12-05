@@ -47,8 +47,8 @@ class TrainModel(object):
         # Training and validation dataset paths
         train_in_data_path = './data/train/input'
         train_gt_data_path = './data/train/groundtruth'
-        val_in_data_path = './data/val/input'
-        val_gt_data_path = './data/val/groundtruth'
+        val_in_data_path = './data/validation/input'
+        val_gt_data_path = './data/validation/groundtruth'
         # Where to save and load model weights (=checkpoints)
         self.checkpoints_dir = './checkpoints'
         if not os.path.exists(self.checkpoints_dir):
@@ -106,16 +106,16 @@ class TrainModel(object):
                 img_crop = tf.unstack(tf.reshape(img_crop, [2, self.crop_size, self.crop_size, self.channels]))
             else: # ['jpg', 'jpeg', 'png', 'bmp', 'JPG', 'JPEG', 'PNG', 'BMP']
                 # Read data
-                img_in_raw = tf.read_file(path_img_in)
-                img_gt_raw = tf.read_file(path_img_gt)
+                img_in_raw = tf.io.read_file(path_img_in)
+                img_gt_raw = tf.io.read_file(path_img_gt)
                 img_in_tensor = tf.image.decode_image(img_in_raw, channels=3)
                 img_gt_tensor = tf.image.decode_image(img_gt_raw, channels=3)
                 # Normalise then crop data
                 imgs = [tf.cast(img, tf.float32) / 255.0 for img in [img_in_tensor, img_gt_tensor]]
-                img_crop = tf.unstack(tf.random_crop(tf.stack(imgs, axis=0), [2, self.crop_size, self.crop_size, self.channels]), axis=0)
+                img_crop = tf.unstack(tf.image.random_crop(tf.stack(imgs, axis=0), [2, self.crop_size, self.crop_size, self.channels]), axis=0)
             return img_crop
         
-        with tf.variable_scope('input'):
+        with tf.compat.v1.variable_scope('input'):
             # Ensure preprocessing is done on the CPU (to let the GPU focus on training)
             with tf.device('/cpu:0'):
                 in_list = tf.convert_to_tensor(in_data_list, dtype=tf.string)
@@ -129,7 +129,7 @@ class TrainModel(object):
                 # Always prefetch one batch and make sure there is always one ready
                 dataset = dataset.prefetch(buffer_size=1)
                 # Create operator to iterate over the created dataset
-                next_element = dataset.make_one_shot_iterator().get_next()
+                next_element = tf.compat.v1.data.make_one_shot_iterator(dataset).get_next()
                 return next_element
     
     def loss(self, n_outputs, img_gt):
@@ -137,13 +137,13 @@ class TrainModel(object):
         loss_total = 0
         for i in xrange(self.n_levels):
             _, hi, wi, _ = n_outputs[i].shape
-            gt_i = tf.image.resize_images(img_gt, [hi, wi], method=0)
+            gt_i = tf.image.resize(img_gt, [hi, wi], method=0)
             loss = tf.reduce_mean(tf.square(gt_i - n_outputs[i]))
             loss_total += loss
             # Save out images and loss values to tensorboard
-            tf.summary.image('out_' + str(i), im2uint8(n_outputs[i]))
+            tf.compat.v1.summary.image('out_' + str(i), im2uint8(n_outputs[i]))
         # Save total loss to tensorboard
-        tf.summary.scalar('loss_total', loss_total)
+        tf.compat.v1.summary.scalar('loss_total', loss_total)
         return loss_total
 
     def validate(self, model):
@@ -164,16 +164,16 @@ class TrainModel(object):
 
         # Learning rate decay
         global_step = tf.Variable(initial_value=0, dtype=tf.int32, trainable=False)
-        self.lr = tf.train.polynomial_decay(self.learning_rate, global_step, self.max_steps, end_learning_rate=0.0,
+        self.lr = tf.compat.v1.train.polynomial_decay(self.learning_rate, global_step, self.max_steps, end_learning_rate=0.0,
                                             power=0.3)
-        tf.summary.scalar('learning_rate', self.lr)
+        tf.compat.v1.summary.scalar('learning_rate', self.lr)
         # Training operator
-        adam = tf.train.AdamOptimizer(self.lr)
+        adam = tf.compat.v1.train.AdamOptimizer(self.lr)
 
         # Get next data from preprocessed training dataset
         img_in, img_gt = self.get_data(self.train_in_data_list, self.train_gt_data_list, self.batch_size, self.epoch)
-        tf.summary.image('img_in', im2uint8(img_in))
-        tf.summary.image('img_gt', im2uint8(img_gt))
+        tf.compat.v1.summary.image('img_in', im2uint8(img_in))
+        tf.compat.v1.summary.image('img_gt', im2uint8(img_gt))
         print('img_in, img_gt', img_in.shape, img_gt.shape)
         # Compute image loss
         n_outputs = model(img_in, reuse=False)
@@ -183,11 +183,11 @@ class TrainModel(object):
         train_op = adam.minimize(loss_op, global_step)
 
         # Create session
-        sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
+        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True)))
         # Initialise all the variables in current session
-        init = tf.global_variables_initializer()
+        init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
-        self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
+        self.saver = tf.compat.v1.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
         # Check if there are intermediate trained model to load
         if not self.load(sess, self.checkpoints_dir):
@@ -202,7 +202,7 @@ class TrainModel(object):
         if self.has_val_data:
             val_loss_op = self.validate(model)
             # Save validation loss to tensorboard
-            val_summary_op = tf.summary.scalar('val_loss', val_loss_op)
+            val_summary_op = tf.compat.v1.summary.scalar('val_loss', val_loss_op)
             # Compute initial loss
             val_loss, val_summary = sess.run([val_loss_op, val_summary_op])
             summary_writer.add_summary(val_summary, global_step=0)

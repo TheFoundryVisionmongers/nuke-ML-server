@@ -29,10 +29,12 @@ ENV PATH /opt/conda/bin:$PATH
 RUN pip install --no-cache-dir --upgrade pip==9.0.3 setuptools wheel && \
     pip install --no-cache-dir \
     future \
+    gast==0.2.2 \
     protobuf \
     scikit-image \
-    tensorflow-gpu \
+    tensorflow-gpu==1.14.0 \
     cupy \
+    imageio \
     OpenEXR
 
 WORKDIR /workspace

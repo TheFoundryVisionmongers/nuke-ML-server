@@ -84,13 +84,13 @@ class EncoderDecoder(tf.keras.Model):
         n, h, w, c = inputs.get_shape().as_list()
         n_outputs = []
         inp_pred = inputs
-        with tf.variable_scope('', reuse=reuse):
+        with tf.compat.v1.variable_scope('', reuse=reuse):
             for i in xrange(self.n_levels):
                 scale = self.scale ** (self.n_levels - i - 1)
                 hi = int(round(h * scale))
                 wi = int(round(w * scale))
-                inp_init = tf.image.resize_images(inputs, [hi, wi], method=0)
-                inp_pred = tf.stop_gradient(tf.image.resize_images(inp_pred, [hi, wi], method=0))
+                inp_init = tf.image.resize(inputs, [hi, wi], method=0)
+                inp_pred = tf.stop_gradient(tf.image.resize(inp_pred, [hi, wi], method=0))
                 inp_all = tf.concat([inp_init, inp_pred], axis=3, name='inp')
 
                 # Encoder
@@ -126,7 +126,7 @@ class EncoderDecoder(tf.keras.Model):
                 if i >= 0:
                     n_outputs.append(reconstructed)
                 if i == 0:
-                    tf.get_variable_scope().reuse_variables()
+                    tf.compat.v1.get_variable_scope().reuse_variables()
 
         return n_outputs
 
