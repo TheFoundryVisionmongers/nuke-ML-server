@@ -27,7 +27,7 @@ import tensorflow as tf
 
 from ..baseModel import BaseModel
 from ..common.model_builder import EncoderDecoder
-from ..common.util import print_, get_ckpt_list
+from ..common.util import print_, get_ckpt_list, linear_to_srgb, srgb_to_linear
 
 class Model(BaseModel):
     """Load your trained model and do inference in Nuke"""
@@ -78,7 +78,7 @@ class Model(BaseModel):
         Return the result of the inference.
         """
         image = image_list[0]
-        image = self.linear_to_srgb(image).copy()
+        image = linear_to_srgb(image).copy()
         H, W, channels = image.shape
 
         # Add padding so that width and height of image are a multiple of 16
@@ -126,5 +126,5 @@ class Model(BaseModel):
         # Remove first dimension and padding
         res = res[0, :H, :W, :]
 
-        output_image = self.srgb_to_linear(res)
+        output_image = srgb_to_linear(res)
         return [output_image]

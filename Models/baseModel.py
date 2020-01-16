@@ -96,29 +96,3 @@ class BaseModel(object):
     def get_name(self):
         """Return the name of the model."""
         return self.name
-
-    def srgb_to_linear(self, x):
-        """Transform the image from sRGB to linear.
-
-        # Arguments:
-            x: The image to transform
-        """
-        a = 0.055
-        x = np.clip(x, 0, 1)
-        mask = x < 0.04045
-        x[mask] /= 12.92
-        x[mask!=True] = np.exp(2.4 * (np.log(x[mask!=True] + a) - np.log(1 + a)))
-        return x
-
-    def linear_to_srgb(self, x):
-        """Transform the image from linear to sRGB.
-
-        # Arguments:
-            x: The image to transform
-        """
-        a = 0.055
-        x = np.clip(x, 0, 1)
-        mask = x <= 0.0031308
-        x[mask] *= 12.92
-        x[mask!=True] = np.exp(np.log(1 + a) + (1/2.4) * np.log(x[mask!=True])) - a
-        return x

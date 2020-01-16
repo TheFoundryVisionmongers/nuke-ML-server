@@ -38,6 +38,7 @@ import detectron.utils.c2 as c2_utils
 
 import vis as vis_utils
 from utils import dict_equal
+from ..common.util import linear_to_srgb, srgb_to_linear
 
 import numpy as np
 import copy
@@ -88,7 +89,7 @@ class Model(BaseModel):
         Return the result of the inference.
         """
         image = image_list[0]
-        image = self.linear_to_srgb(image)*255.
+        image = linear_to_srgb(image)*255.
         imcpy = image.copy()
 
         # Initialize the model out of the configuration and weights files
@@ -142,6 +143,6 @@ class Model(BaseModel):
                 font_scale=self.font_scale
                 )
 
-        res = self.srgb_to_linear(res.astype(np.float32) / 255.)
+        res = srgb_to_linear(res.astype(np.float32) / 255.)
 
         return [res]

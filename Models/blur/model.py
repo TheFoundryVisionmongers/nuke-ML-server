@@ -18,6 +18,8 @@ from ..baseModel import BaseModel
 import cv2
 import numpy as np
 
+from ..common.util import linear_to_srgb, srgb_to_linear
+
 import message_pb2
 
 class Model(BaseModel):
@@ -45,12 +47,12 @@ class Model(BaseModel):
         Return the result of the inference.
         """
         image = image_list[0]
-        image = self.linear_to_srgb(image)
+        image = linear_to_srgb(image)
         image = (image * 255).astype(np.uint8)
         kernel = self.kernel_size * 2 + 1
         blur = cv2.GaussianBlur(image, (kernel, kernel), 0)
         blur = blur.astype(np.float32) / 255.
-        blur = self.srgb_to_linear(blur)
+        blur = srgb_to_linear(blur)
         
         # If make_blur button is pressed in Nuke
         if self.make_blur:
