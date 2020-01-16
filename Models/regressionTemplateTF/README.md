@@ -10,11 +10,13 @@ For instructions on how to set-up the training, on potential training issues or 
 
 To train the ML algorithm, you need to set-up your dataset in `regressionTemplateTF/data/train/`. In addition to the training data, it is highly recommended to have validation data in `regressionTemplateTF/data/validation/`. This allows you to check that there is no overfitting on the training data. Please note that the validation dataset and training dataset must not intersect.
 
-Your training/validation dataset will be different depending on your task, i.e. depending on which parameter(s) you want to learn. In the current implementation, we are doing a regression on one parameter (gamma) with a specifically designed data preprocessing pipeline. Namely our model training input is a stack of both original and gamma-graded image histograms. Our preprocessing pipeline read the original image (from `train/` or `validation/`), then apply gamma correction to that image using a random gamma value. Both the original and resulting gamma-graded images are grayscaled, resized and we compute their 100-bin histogram. The model input (shape [2, 100]) is a stack of those two histograms.
+Your training/validation dataset will be different depending on your task, i.e. depending on which parameter(s) you want to learn. In the current implementation, we are doing a regression on one parameter (gamma) with a specifically designed data preprocessing pipeline. Namely our model training input is a stack of both original and gamma-graded image histograms.
+
+Our preprocessing pipeline read the original image (from `regressionTemplateTF/data/train/` or `regressionTemplateTF/data/validation/`), then apply gamma correction to that image using a random gamma value. Both the original and resulting gamma-graded images are grayscaled, resized and we compute their 100-bin histogram. The model input (shape [2, 100]) is a stack of those two histograms.
 
 The above data preprocessing is specific to the gamma-correction problem, which means that for other parameters prediction (e.g. colour grading, lens distortion..), you will have to modifiy the data preprocessing functions found in `train_regression.py` and in `model.py` to match your task. The inference file `model.py` has to be changed as well, as the same data preprocessing used in training has to be applied before doing an inference in Nuke.
 
-To summarise, for your specific regression task, you need to implement an appropriate data preprocessing and modify the code in both the training file `train_regression.py` and the inference file `model.py`.
+To summarise, for your specific regression task, you need to implement an appropriate data preprocessing and modify the code in both the training file `train_regression.py` and the inference file `model.py` accordingly.
 
 ## Training
 
