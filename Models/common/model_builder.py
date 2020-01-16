@@ -158,3 +158,16 @@ def mobilenet_transfer(class_number):
         layer.trainable=True
 
     return model
+
+def baseline_model(input_shape, output_param_number=1, hidden_layer_size=16):
+    """Return a fully connected model with 1 hidden layer"""
+    if hidden_layer_size < output_param_number:
+        raise ValueError("Neurons in the hidden layer (={}) \
+            should be > output param number (={})".format(
+                hidden_layer_size, output_param_number))
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Flatten(input_shape=input_shape))
+    # Regular densely connected NN layer
+    model.add(tf.keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu))
+    model.add(tf.keras.layers.Dense(output_param_number, activation=None)) # linear activation
+    return model

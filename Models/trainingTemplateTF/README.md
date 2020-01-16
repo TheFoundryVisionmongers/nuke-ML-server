@@ -46,8 +46,14 @@ python train_model.py
 ```
 You can also specify the batch size, learning rate and number of epochs:
 ```
-python train_model.py --bch=16 --lr=1e-4 --ep=10000
+python train_model.py --bch=16 --lr=1e-4 --ep=1000
 ```
+It is now possible to have deterministic training. You will be able to reproduce your training (get same model weights) by setting the seed to a random int number (here 77):
+```
+python train_model.py --seed=77
+```
+We enable deterministic training in part by applying a GPU patch to the stock TensorFlow, this GPU patch slows down training significantly. By adding the `--no-gpu-patch` tag to the previous command, you achieve a slighlty less deterministic training but keep the same training time.
+
 ### Potential Training Issues
 
 The principal issue you may hit when training is a GPU out-of-memory (OOM) error. To apply training with default values, your GPU memory should be at least 8GB.
