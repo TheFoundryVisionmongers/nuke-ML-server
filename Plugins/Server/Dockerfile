@@ -1,5 +1,6 @@
-FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
-ARG PYTHON_VERSION=2.7
+FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
+
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
@@ -14,13 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         vim && \
     rm -rf /var/lib/apt/lists/*
 
-#install conda with miniconda, then install pytorch (which includes caffe2) and dependencies
+ARG PYTHON_VERSION=2.7
+# Install conda with miniconda, install Python
 RUN curl -o ~/miniconda.sh -O  https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
     chmod +x ~/miniconda.sh && \
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
     /opt/conda/bin/conda install -y python=$PYTHON_VERSION numpy pyyaml=3.13 scipy ipython mkl mkl-include cython typing
-RUN /opt/conda/bin/conda install -y magma-cuda90 -c pytorch && \
+# Install PyTorch (which includes caffe2) and dependencies
+RUN /opt/conda/bin/conda install -y magma-cuda100 -c pytorch && \
     /opt/conda/bin/conda install -y pytorch-nightly -c pytorch && \
     /opt/conda/bin/conda clean -ya
 
@@ -32,8 +35,9 @@ RUN pip install --no-cache-dir --upgrade pip==9.0.3 setuptools wheel && \
     gast==0.2.2 \
     protobuf \
     scikit-image \
+    tensorflow-determinism \
     tensorflow-gpu==1.14.0 \
-    cupy \
+    cupy==6.5.0 \
     imageio \
     OpenEXR
 

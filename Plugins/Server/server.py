@@ -17,7 +17,7 @@ import SocketServer
 import argparse
 import os
 import importlib
-import socket #to get machine hostname
+import socket           # to get machine hostname
 import traceback
 
 import numpy as np
@@ -34,6 +34,7 @@ class MLTCPServer(SocketServer.TCPServer):
         # Each directory in models/ containing a model.py file is an available ML model
         self.available_models = [name for name in next(os.walk('models'))[1]
             if os.path.isfile(os.path.join('models', name, 'model.py'))]
+        self.available_models.sort()
         self.models = {}
         for model in self.available_models:
             print('Importing models.{}.model'.format(model))
