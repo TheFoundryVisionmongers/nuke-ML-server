@@ -11,8 +11,7 @@ import cv2
 import tensorflow as tf
 
 from ..baseModel import BaseModel
-from ..common.model_builder import mobilenet_transfer
-from ..common.util import print_, get_saved_model_list
+from ..common.util import print_, get_saved_model_list, linear_to_srgb
 
 import message_pb2
 
@@ -56,6 +55,7 @@ class Model(BaseModel):
         print_("Loading trained model checkpoint...\n", 'm')
         # Load from given checkpoint file name
         model = tf.keras.models.load_model(os.path.join(self.checkpoints_dir, self.checkpoint_name))
+        model._make_predict_function()
         print_("...Checkpoint {} loaded\n".format(self.checkpoint_name), 'm')
         return model
 
@@ -68,7 +68,7 @@ class Model(BaseModel):
         Return the result of the inference.
         """
         image = image_list[0]
-        image = self.linear_to_srgb(image).copy()
+        image = linear_to_srgb(image).copy()
         image = (image * 255).astype(np.uint8)
 
         if not hasattr(self, 'model'):
@@ -76,14 +76,21 @@ class Model(BaseModel):
             tf.compat.v1.reset_default_graph()
             config = tf.compat.v1.ConfigProto()
             config.gpu_options.allow_growth=True
-            self.sess=tf.compat.v1.Session(config=config)
+            self.sess = tf.compat.v1.Session(config=config)
+            # Necessary to switch / load_weights on different h5 file
+            tf.compat.v1.keras.backend.set_session(self.sess)
             # Load most recent trained model
             self.model = self.load_model()
+            self.graph = tf.compat.v1.get_default_graph()
+            self.prev_ckpt_name = self.checkpoint_name
             self.class_labels = (self.checkpoint_name.split('.')[0]).split('_')
+        else:
+            tf.compat.v1.keras.backend.set_session(self.sess)
 
         # If checkpoint name has changed, load new checkpoint
         if self.prev_ckpt_name != self.checkpoint_name or self.checkpoint_name == '':
             self.model = self.load_model()
+            self.graph = tf.compat.v1.get_default_graph()
             self.class_labels = (self.checkpoint_name.split('.')[0]).split('_')
             # If checkpoint correctly loaded, update previous checkpoint name
             self.prev_ckpt_name = self.checkpoint_name
@@ -94,7 +101,10 @@ class Model(BaseModel):
         # Preprocess a numpy array encoding a batch of images (RGB values within [0, 255])
         image_batch = tf.keras.applications.mobilenet.preprocess_input(image_batch)
         start = time.time()
-        y_prob = self.model.predict(image_batch)
+
+        with self.graph.as_default():
+            y_prob = self.model.predict(image_batch)
+
         y_class = y_prob.argmax(axis=-1)[0]
         duration = time.time() - start
         # Print results on server side
