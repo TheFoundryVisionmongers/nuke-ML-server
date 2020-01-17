@@ -145,8 +145,8 @@ Install nvidia-container-toolkit for your Linux platform by following the [insta
 
 Build the docker image from the [Dockerfile](/Plugins/Server/Dockerfile):
 ```
-# Start by loading Ubuntu16.04 with cuda 9.0 and cudnn7 as the base image
-sudo docker pull nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+# Start by loading Ubuntu18.04 with cuda 10.0 and cudnn7 as the base image
+sudo docker pull nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
 # Build the docker image on top of the base image
 cd Plugins/Server/
 # Choose your own label for <docker_image_name>, it must be lowercase. e.g. mlserver.
