@@ -337,7 +337,7 @@ class TrainModel(object):
                     .format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), step, loss_total, examples_per_sec, sec_per_batch))
                 print(format_str + val_str)
 
-            if step + 1 % self.ckpts_save_freq == 0 or step == self.max_steps - 1:
+            if (step + 1) % self.ckpts_save_freq == 0 or step == self.max_steps - 1:
                 # Save current model in a checkpoint
                 self.save(sess, self.checkpoints_dir, step + 1)
         print_("Training duration: {:0.4f}s\n".format(time.time() - train_start), 'm')
