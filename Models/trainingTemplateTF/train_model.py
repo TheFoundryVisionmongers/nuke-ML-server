@@ -62,6 +62,7 @@ class TrainModel(object):
         self.learning_rate = args.learning_rate
         self.batch_size = args.batch_size
         self.epoch = args.epoch
+        self.no_resume = args.no_resume
         # A random seed (!=None) allows you to reproduce your training results
         self.seed = args.seed
         if self.seed is not None:
@@ -131,7 +132,7 @@ class TrainModel(object):
             if (val_is_exr and not self.is_exr) or (not val_is_exr and self.is_exr):
                 raise TypeError("Train and validation data should have the same file format")
             print("Number of validation data: {}".format(len(self.val_in_data_list)))
-
+        
         # Compute and print training hyperparameters
         batch_per_epoch = (len(self.train_in_data_list)) // self.batch_size
         self.max_steps = int(self.epoch * (batch_per_epoch))
@@ -287,14 +288,14 @@ class TrainModel(object):
             keep_checkpoint_every_n_hours=self.keep_ckpt_every_n_hours)
 
         # Check if there are intermediate trained model to load
-        if not self.load(sess, self.checkpoints_dir):
+        if self.no_resume or not self.load(sess, self.checkpoints_dir):
             print_("Starting training from scratch\n", 'm')
 
         # Tensorboard summary
         summary_op = tf.compat.v1.summary.merge_all()
         summary_name = ("data{}_bch{}_ep{}".format(
-            len(self.train_in_data_list), self.batch_size, self.epoch)
-            + "_seed{}".format(self.seed) if self.seed is not None else "")
+            len(self.train_in_data_list), self.batch_size, self.epoch))
+        summary_name += ("_seed{}".format(self.seed) if self.seed is not None else "")
         summary_writer = tf.compat.v1.summary.FileWriter(
             os.path.join(self.summaries_dir, summary_name),
             graph=sess.graph,
@@ -385,6 +386,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=1e-4, dest='learning_rate', help='initial learning rate')
     parser.add_argument('--seed', type=int, default=None, dest='seed', help='set random seed for deterministic training')
     parser.add_argument('--no-gpu-patch', dest='no_gpu_patch', default=False, action='store_true', help='if seed is set, add this tag for much faster but slightly less deterministic training')
+    parser.add_argument('--no-resume', dest='no_resume', default=False, action='store_true',  help="start training from scratch")
     parser.add_argument('--name', type=str, default="trainingTemplateTF", dest='ckpt_save_name', help='name of saved checkpoints/model weights')
     args = parser.parse_args()
     return args
