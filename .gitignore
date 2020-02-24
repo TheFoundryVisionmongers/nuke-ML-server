@@ -16,9 +16,10 @@ build-Debug/
 *.os
 *.o
 
-# Ignore all directories named (for trainingTemplateTF)
+# Ignore all directories named:
 summaries/
 input/
 groundtruth/
 checkpoints/
 data/
+serverlocal/

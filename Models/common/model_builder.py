@@ -83,18 +83,18 @@ class EncoderDecoder(tf.keras.Model):
         # Apply encoder decoder
         n, h, w, c = inputs.get_shape().as_list()
         n_outputs = []
-        inp_pred = inputs
+        input_pred = inputs
         with tf.compat.v1.variable_scope('', reuse=reuse):
             for i in xrange(self.n_levels):
                 scale = self.scale ** (self.n_levels - i - 1)
                 hi = int(round(h * scale))
                 wi = int(round(w * scale))
-                inp_init = tf.image.resize(inputs, [hi, wi], method=0)
-                inp_pred = tf.stop_gradient(tf.image.resize(inp_pred, [hi, wi], method=0))
-                inp_all = tf.concat([inp_init, inp_pred], axis=3, name='inp')
+                input_init = tf.image.resize(inputs, [hi, wi], method=0)
+                input_pred = tf.stop_gradient(tf.image.resize(input_pred, [hi, wi], method=0))
+                input_all = tf.concat([input_init, input_pred], axis=3, name='inp')
 
                 # Encoder
-                conv1_1 = self.conv1_1(inp_all)
+                conv1_1 = self.conv1_1(input_all)
                 conv1_2 = self.block1_2(conv1_1)
                 conv1_3 = self.block1_3(conv1_2)
                 conv1_4 = self.block1_4(conv1_3)
@@ -121,13 +121,12 @@ class EncoderDecoder(tf.keras.Model):
                 deconv1_3 = self.deblock1_3(cat1)
                 deconv1_2 = self.deblock1_2(deconv1_3)
                 deconv1_1 = self.deblock1_1(deconv1_2)
-                reconstructed = self.deconv0_4(deconv1_1)
+                input_pred = self.deconv0_4(deconv1_1)
 
                 if i >= 0:
-                    n_outputs.append(reconstructed)
+                    n_outputs.append(input_pred)
                 if i == 0:
                     tf.compat.v1.get_variable_scope().reuse_variables()
-
         return n_outputs
 
 def mobilenet_transfer(class_number):
