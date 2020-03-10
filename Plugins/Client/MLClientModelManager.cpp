@@ -15,6 +15,124 @@
 
 #include "MLClientModelManager.h"
 #include "DDImage/Knob.h"
+#include "MLClient.h"
+
+MLClientModelKnob::MLClientModelKnob(DD::Image::Knob_Closure* kc, DD::Image::Op* op, const char* name)
+: DD::Image::Knob(kc, name)
+, _op(op)
+, _model("")
+{ }
+
+const char* MLClientModelKnob::Class() const
+{
+  return "MLClientModelKnob";
+}
+
+bool MLClientModelKnob::not_default () const
+{
+  // Always flag as not default, so it's always serialised.
+  return true;
+}
+
+std::string MLClientModelKnob::getModel() const
+{
+  return _model;
+}
+
+const std::map<std::string, std::string>& MLClientModelKnob::getParameters() const
+{
+  return _parameters;
+}
+
+void MLClientModelKnob::to_script (std::ostream &out, const DD::Image::OutputContext *, bool quote) const
+{
+  std::string saveString;
+  std::stringstream ss;
+  if (_op != nullptr) {
+    DD::Image::Knob* k = _op->knob("models");
+    if(k != nullptr) {
+      const int modelIndex = k->get_value();
+      DD::Image::Enumeration_KnobI* eKnob = k->enumerationKnob();
+      if(eKnob != nullptr) {
+        ss << "model:" << eKnob->getItemValueString(modelIndex) << ";";
+        MLClient* mlClient = dynamic_cast<MLClient*>(_op);
+        if(mlClient != nullptr) {
+          MLClientModelManager& mlManager = mlClient->getModelManager();
+          toScriptT(mlManager, ss, &MLClientModelManager::getNumOfInts, &MLClientModelManager::getDynamicIntName);
+          toScriptT(mlManager, ss, &MLClientModelManager::getNumOfFloats, &MLClientModelManager::getDynamicFloatName);
+          toScriptT(mlManager, ss, &MLClientModelManager::getNumOfBools, &MLClientModelManager::getDynamicBoolName);
+          toScriptStrings(mlManager, ss);
+        }
+      }
+    }
+  }
+  saveString = ss.str();
+  if(quote) {
+    saveString.insert(saveString.begin(),'{');
+    saveString+='}';
+  }
+  out << saveString;
+}
+
+bool MLClientModelKnob::from_script(const char * src)
+{
+  std::string loadString(src);
+
+  if ((_op != nullptr) && (loadString!="")) {
+    bool success = false;
+
+    // We parse the serialised string to extract the pairs of key:val;
+    const std::string delimiter = ";";
+    const std::string keyValDelimiter = ":";
+    _parameters.clear();
+    size_t pos = 0;
+    std::string token;
+    while ((pos = loadString.find(delimiter)) != std::string::npos) {
+      token = loadString.substr(0, pos);
+      std::cout << token << std::endl;
+
+      // We further split the key:value pair
+      std::string key = token.substr(0, token.find(keyValDelimiter));
+      std::string val = token.substr(token.find(keyValDelimiter) + keyValDelimiter.length(), token.length() - key.length() - keyValDelimiter.length());
+      if(key == "model") {
+        _model = val;
+      } else {
+        _parameters.insert(std::make_pair(key, val));
+      }
+
+      loadString.erase(0, pos + delimiter.length());
+    }
+
+    return success;
+  }
+  return true;
+}
+
+void MLClientModelKnob::toScriptT(MLClientModelManager& mlManager, std::ostream &out, 
+  int (MLClientModelManager::*getNum)() const,
+  std::string (MLClientModelManager::*getDynamicName)(int)) const
+{
+  const int num = (mlManager.*getNum)();
+  for(int i = 0; i < num; i++) {
+    DD::Image::Knob* k = _op->knob((mlManager.*getDynamicName)(i).c_str());
+    if(k != nullptr) {
+      std::stringstream ss;
+      k->to_script(ss, nullptr, false);
+      out << (mlManager.*getDynamicName)(i) << ":" << ss.str() << ";";
+    }
+  }
+}
+
+void MLClientModelKnob::toScriptStrings(MLClientModelManager& mlManager, std::ostream &out) const
+{
+  const int numFloats = mlManager.getNumOfStrings();
+  for(int i = 0; i < numFloats; i++) {
+    DD::Image::Knob* k = _op->knob(mlManager.getDynamicStringName(i).c_str());
+    if(k != nullptr) {
+      out << mlManager.getDynamicStringName(i) << ":" << k->get_text() << ";";
+    }
+  }
+}
 
 MLClientModelManager::MLClientModelManager(DD::Image::Op* parent)
 : _parent(parent)

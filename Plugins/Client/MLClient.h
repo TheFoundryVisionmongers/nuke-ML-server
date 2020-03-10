@@ -121,6 +121,10 @@ private:
   //! Return whether the dynamic knobs should be shown or not.
   bool getShowDynamic() const;
 
+  //! Look for the knob with the given name. If found, restore its value
+  //! from the given serialised value. 
+  void restoreKnobValue(const std::string& knobName, const std::string& value);
+
 private:
   std::string _host;
   bool _hostIsValid;

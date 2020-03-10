@@ -270,6 +270,30 @@ bool MLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
     _chosenModel = 0;
   }
 
+  // We try to select the model saved in the serial serialiseKnob if any.
+  bool restoreModel = false;
+  MLClientModelKnob* modelKnob = nullptr;
+  DD::Image::Knob* k = knob("serialiseKnob");
+  if(k != nullptr) {
+    modelKnob = dynamic_cast<MLClientModelKnob*>(k);
+    if(modelKnob != nullptr) {
+      std::string modelLabel = modelKnob->getModel();
+      if(modelLabel != "") {
+        const std::vector<std::string>& models = pSelectModelEnum->menu();
+        int i = 0;
+        for(auto& m : models) {
+          if(m == modelLabel) {
+            _chosenModel = i;
+            _selectedModelknob->set_value(_chosenModel);
+            restoreModel = true;
+            break;
+          }
+          i++;
+        }
+      }      
+    }
+  }
+
   // Set member variables to indicate our connections and model set-up succeeded.
   _modelSelected = true;
   _showDynamic = true;
@@ -280,8 +304,50 @@ bool MLClient::refreshModelsAndKnobsFromServer(std::string& errorMsg)
     getModelManager().parseOptions(m);
   }
   setNumNewKnobs(replace_knobs(knob("models"), getNumNewKnobs(), addDynamicKnobs, this->firstOp()));
+
+  // If we have restored a model, we also need to restore its parameters
+  // now that its knobs have been created,
+  if(restoreModel && (modelKnob != nullptr)) {
+    for(const std::pair<std::string, std::string>& keyVal: modelKnob->getParameters()) {
+      restoreKnobValue(keyVal.first, keyVal.second);
+    }
+  }
+
   // Return true if control made it here, success.
   return true;
+}
+
+void MLClient::restoreKnobValue(const std::string& knobName, const std::string& value)
+{
+  // We look for the corresponding knob 
+  DD::Image::Knob* paramKnob = knob(knobName.c_str());
+  if(paramKnob != nullptr) {
+    // Is this an animation curve?
+    if(value.substr(0, 6) == "{curve") {
+      // This is a curve, we remove the { }
+      std::string curveString = value.substr(1, value.find("}") - 1);
+      paramKnob->set_animation(curveString.c_str(), 0);
+    } 
+    else if(value.substr(0, 1) == "{") {
+      // That's an expression
+      std::string expressionString = value.substr(1, value.find("}") - 1);
+      // If the expression is within double quote, we need to extract it
+      if(expressionString.substr(0, 1) == "\"") {
+        expressionString.erase(0, 1);
+        expressionString = expressionString.substr(0, expressionString.find("\""));
+      } else {
+        // The expression might be followed by keys that we ignore here.
+        if(expressionString.find(" ") != std::string::npos) {
+          expressionString = expressionString.substr(0, expressionString.find(" "));
+        }
+      }
+      paramKnob->set_expression(expressionString.c_str(), 0);
+    }
+    else {
+      // That's one value
+      paramKnob->set_text(value.c_str());
+    }
+  }
 }
 
 //! Return whether we successfully managed to pull model
@@ -537,6 +603,7 @@ void MLClient::addDynamicKnobs(void* p, Knob_Callback f)
       std::string name = ((MLClient *)p)->getModelManager().getDynamicIntName(i);
       std::string label = ((MLClient *)p)->getModelManager().getDynamicIntName(i);
       Int_knob(f, ((MLClient *)p)->getModelManager().getDynamicIntValue(i), name.c_str(), label.c_str());
+      SetFlags(f, Knob::DO_NOT_WRITE);
       Newline(f, " ");
     }
     for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfFloats(); i++) {
@@ -544,18 +611,21 @@ void MLClient::addDynamicKnobs(void* p, Knob_Callback f)
       std::string label = ((MLClient *)p)->getModelManager().getDynamicFloatName(i);
       Float_knob(f, ((MLClient *)p)->getModelManager().getDynamicFloatValue(i), name.c_str(), label.c_str());
       ClearFlags(f, Knob::SLIDER);
+      SetFlags(f, Knob::DO_NOT_WRITE);
       Newline(f, " ");
     }
     for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfBools(); i++) {
       std::string name = ((MLClient *)p)->getModelManager().getDynamicBoolName(i);
       std::string label = ((MLClient *)p)->getModelManager().getDynamicBoolName(i);
       Bool_knob(f, ((MLClient *)p)->getModelManager().getDynamicBoolValue(i), name.c_str(), label.c_str());
+      SetFlags(f, Knob::DO_NOT_WRITE);
       Newline(f, " ");
     }
     for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfStrings(); i++) {
       std::string name = ((MLClient *)p)->getModelManager().getDynamicStringName(i);
       std::string label = ((MLClient *)p)->getModelManager().getDynamicStringName(i);
       String_knob(f, ((MLClient *)p)->getModelManager().getDynamicStringValue(i), name.c_str(), label.c_str());
+      SetFlags(f, Knob::DO_NOT_WRITE);
       Newline(f, " ");
     }
     for (int i = 0; i < ((MLClient *)p)->getModelManager().getNumOfButtons(); i++) {
@@ -570,7 +640,11 @@ void MLClient::addDynamicKnobs(void* p, Knob_Callback f)
 void MLClient::knobs(Knob_Callback f)
 {
   String_knob(f, &_host, "host");
+  SetFlags(f, Knob::ALWAYS_SAVE);
+
   Int_knob(f, &_port, "port");
+  SetFlags(f, Knob::ALWAYS_SAVE);
+
   Button(f, "connect", "Connect");
   Divider(f, "  ");
   static const char* static_choices[] = {
@@ -580,6 +654,11 @@ void MLClient::knobs(Knob_Callback f)
     _selectedModelknob = knob;
   }
   SetFlags(f, Knob::SAVE_MENU);
+
+  // We create a knob to save/load the current state of the dynamic knobs.
+  if(f.makeKnobs()) {
+    CustomKnob1(MLClientModelKnob, f, this, "serialiseKnob");
+  }
 
   if (!f.makeKnobs()) {
     MLClient::addDynamicKnobs(this->firstOp(), f);
@@ -654,7 +733,6 @@ int MLClient::knob_changed(Knob* knobChanged)
             mlserver::StringAttrib pythonScript = object.values(0).string_attributes(0);
             // Run Python Script in Nuke
             if (pythonScript.values_size() != 0) {
-              std::cout << " cmd=\n" << pythonScript.values(0) << "\n" << std::flush;
               script_command(pythonScript.values(0).c_str(), true, false);
               script_unlock();
             }
