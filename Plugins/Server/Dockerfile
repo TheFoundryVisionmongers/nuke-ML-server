@@ -38,8 +38,8 @@ RUN pip install --no-cache-dir --upgrade pip==9.0.3 setuptools wheel && \
     tensorflow-determinism \
     tensorflow-gpu==1.14.0 \
     cupy==6.5.0 \
-    imageio \
-    OpenEXR
+    imageio==2.6.1 \
+    OpenEXR==1.3.2
 
 WORKDIR /workspace
 # Install the COCO API
