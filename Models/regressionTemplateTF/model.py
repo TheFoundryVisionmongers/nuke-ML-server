@@ -24,6 +24,7 @@ import numpy as np
 import cv2
 
 import tensorflow as tf
+tf.compat.v1.disable_eager_execution() # For TF 2.x compatibility
 
 from models.baseModel import BaseModel
 from models.common.model_builder import baseline_model

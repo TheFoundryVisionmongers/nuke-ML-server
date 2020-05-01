@@ -22,6 +22,7 @@ import OpenEXR, Imath
 import cv2
 
 import tensorflow as tf
+tf.compat.v1.disable_eager_execution() # For TF 2.x compatibility
 
 def print_(str, colour='', bold=False):
     if colour == 'w': # yellow warning
