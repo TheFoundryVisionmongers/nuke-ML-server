@@ -13,22 +13,22 @@
 # limitations under the License.
 ##############################################################################
 
-import SocketServer
 import argparse
 import os
 import importlib
 import socket           # to get machine hostname
 import traceback
 
+try: # python3
+    import socketserver
+except ImportError: # python2
+    import SocketServer as socketserver
+
 import numpy as np
 
 from message_pb2 import *
 
-# import libcaffe2_detectron_ops_gpu.so once and for all
-import detectron.utils.c2 as c2_utils
-c2_utils.import_detectron_ops() 
-
-class MLTCPServer(SocketServer.TCPServer):
+class MLTCPServer(socketserver.TCPServer):
     def __init__(self, server_address, handler_class, auto_bind=True):
         self.verbose = True
         # Each directory in models/ containing a model.py file is an available ML model
@@ -39,10 +39,10 @@ class MLTCPServer(SocketServer.TCPServer):
         for model in self.available_models:
             print('Importing models.{}.model'.format(model))
             self.models[model] = importlib.import_module('models.{}.model'.format(model)).Model()
-        SocketServer.TCPServer.__init__(self, server_address, handler_class, auto_bind)
+        socketserver.TCPServer.__init__(self, server_address, handler_class, auto_bind)
         return
 
-class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
+class ImageProcessTCPHandler(socketserver.BaseRequestHandler):
     """This request handler is instantiated once per connection."""
 
     def handle(self):
@@ -62,15 +62,13 @@ class ImageProcessTCPHandler(SocketServer.BaseRequestHandler):
 
         # Process message
         resp_msg = self.process_message(req_msg)
-
         # Serialize response
         self.vprint('Serializing message')
         s = resp_msg.SerializeToString()
         msg_len = resp_msg.ByteSize()
         totallen = 12 + msg_len
-        msg = str(totallen).zfill(12) + s
+        msg = bytes(str(totallen).zfill(12).encode('utf-8')) + s
         self.vprint('Sending response message of size: {}'.format(totallen))
-        # self.request.sendall(msg)
         self.sendmsg(msg, totallen)
         self.vprint('-----------------------------------------------')
 

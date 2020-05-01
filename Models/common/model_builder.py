@@ -13,6 +13,7 @@
 # limitations under the License.
 ##############################################################################
 
+from builtins import range # python 2/3 forward-compatible (xrange)
 import tensorflow as tf
 
 class ResNetBlock(tf.keras.layers.Layer):
@@ -85,12 +86,12 @@ class EncoderDecoder(tf.keras.Model):
         n_outputs = []
         input_pred = inputs
         with tf.compat.v1.variable_scope('', reuse=reuse):
-            for i in xrange(self.n_levels):
+            for i in range(self.n_levels):
                 scale = self.scale ** (self.n_levels - i - 1)
                 hi = int(round(h * scale))
                 wi = int(round(w * scale))
-                input_init = tf.image.resize(inputs, [hi, wi], method=0)
-                input_pred = tf.stop_gradient(tf.image.resize(input_pred, [hi, wi], method=0))
+                input_init = tf.image.resize(inputs, [hi, wi], method='bilinear')
+                input_pred = tf.stop_gradient(tf.image.resize(input_pred, [hi, wi], method='bilinear'))
                 input_all = tf.concat([input_init, input_pred], axis=3, name='inp')
 
                 # Encoder

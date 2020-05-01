@@ -14,6 +14,7 @@
 ##############################################################################
 
 from __future__ import print_function
+from builtins import input, range # python 2/3 forward-compatible (input_raw, xrange)
 
 import sys
 import os
@@ -23,9 +24,9 @@ import argparse
 from datetime import datetime
 
 import numpy as np
-
 import tensorflow as tf
 print(tf.__version__)
+tf.compat.v1.disable_eager_execution() # For TF 2.x compatibility
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from common.model_builder import EncoderDecoder
@@ -68,7 +69,7 @@ class TrainModel(object):
         if self.seed is not None:
             # Set all seeds necessary for deterministic training
             enable_deterministic_training(self.seed, args.no_gpu_patch)
-        self.crop_size = 128
+        self.crop_size = 256
         self.n_levels = 3
         self.scale = 0.5
         self.channels = 3   # input / output channels
@@ -220,9 +221,9 @@ class TrainModel(object):
     def loss(self, n_outputs, img_gt):
         """Compute multi-scale loss function"""
         loss_total = 0
-        for i in xrange(self.n_levels):
+        for i in range(self.n_levels):
             _, hi, wi, _ = n_outputs[i].shape
-            gt_i = tf.image.resize(img_gt, [hi, wi], method=0)
+            gt_i = tf.image.resize(img_gt, [hi, wi], method='bilinear')
             loss = tf.reduce_mean(tf.square(gt_i - n_outputs[i]))
             loss_total += loss
             # Save out images and loss values to tensorboard
@@ -239,7 +240,7 @@ class TrainModel(object):
         val_op = self.loss(n_outputs, val_img_gt)
         # Test results over one epoch
         batch_per_epoch = len(self.val_in_data_list) // self.batch_size
-        for batch in xrange(batch_per_epoch):
+        for batch in range(batch_per_epoch):
             total_val_loss += val_op
         return total_val_loss / batch_per_epoch
 
@@ -313,7 +314,7 @@ class TrainModel(object):
 
         ################ TRAINING ################
         train_start = time.time()
-        for step in xrange(sess.run(global_step), self.max_steps):
+        for step in range(sess.run(global_step), self.max_steps):
             start_time = time.time()
             val_str = ''
             if step % self.summaries_save_freq == 0 or step == self.max_steps - 1:
@@ -362,7 +363,7 @@ class TrainModel(object):
                 print("    {}".format(name))
             # Ask user if they prefer to start training from scratch or resume training on a specific ckeckpoint 
             while True:
-                mode=str(raw_input('Start training from scratch (start) or resume training from a previous checkpoint (choose one of the above): '))
+                mode=str(input('Start training from scratch (start) or resume training from a previous checkpoint (choose one of the above): '))
                 if mode == 'start' or mode in ckpt_names:
                     break
                 else:

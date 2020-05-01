@@ -13,6 +13,10 @@
 # limitations under the License.
 ##############################################################################
 
+import sys
+if sys.version_info.major > 2: # python3
+    unicode = str
+
 import numpy as np
 
 class BaseModel(object):
@@ -70,8 +74,6 @@ class BaseModel(object):
         if hasattr(self, 'buttons'):
             for button in self.buttons:
                 value = getattr(self, button)
-                if isinstance(value, unicode):
-                    value = str(value)
                 assert type(value) in [bool], 'Broadcasted buttons need to be bool.'
                 btn[button] = value
         return btn
