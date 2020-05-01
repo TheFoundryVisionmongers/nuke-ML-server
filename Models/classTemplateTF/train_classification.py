@@ -11,6 +11,7 @@ import scipy.misc
 import numpy as np
 
 import tensorflow as tf
+tf.compat.v1.disable_eager_execution() # For TF 2.x compatibility
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from common.model_builder import mobilenet_transfer
