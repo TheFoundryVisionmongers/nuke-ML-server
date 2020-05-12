@@ -103,7 +103,7 @@ def vis_mask(img, mask, col, alpha=0.4, show_border=True, border_thick=1):
     img[idx[0], idx[1], :] += alpha * col
 
     if show_border:
-        # cv2.findCountours gives (image, contours, hierarchy) back in opencv 3.x
+        # cv2.findContours gives (image, contours, hierarchy) back in opencv 3.x
         # but gives back (contours, hierachy) in opencv 2.x and 4.x
         contours, _ = cv2.findContours(
             mask.copy(), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)[-2:]
