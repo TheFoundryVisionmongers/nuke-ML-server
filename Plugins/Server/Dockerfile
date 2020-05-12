@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3.6-dev && \
     rm -rf /var/lib/apt/lists/*
 # Have aliases python3->python and pip3->pip
-RUN ln -s /usr/bin/python3 /usr/bin/python & \
+RUN ln -s /usr/bin/python3 /usr/bin/python && \
     ln -s /usr/bin/pip3 /usr/bin/pip
 RUN python -m pip install --upgrade pip
 
