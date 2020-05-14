@@ -34,7 +34,7 @@ RUN pip install --no-cache-dir setuptools wheel && \
     future \
     gast==0.2.2 \
     protobuf \
-    pyyaml \
+    pyyaml==3.13 \
     scikit-image \
     typing \
     imageio \
@@ -56,6 +56,7 @@ RUN pip install 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=Pyt
 
 # Install detectron for mask RCNN
 RUN git clone https://github.com/facebookresearch/detectron
+RUN sed -i 's/cythonize(ext_modules)/cythonize(ext_modules, language_level="3")/g' detectron/setup.py
 RUN cd detectron && pip install -r requirements.txt && make
 
 WORKDIR /workspace/ml-server

@@ -1,5 +1,5 @@
 # Ubuntu 18.04 with CUDA 10.0, CuDNN 7.6
-# Python2.7, TensorFlow 1.14.0, PyTorch 1.0
+# Python2.7, TensorFlow 1.15.0, PyTorch 1.4
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -53,6 +53,7 @@ RUN pip install 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=Pyt
 
 # Install detectron for mask RCNN
 RUN git clone https://github.com/facebookresearch/detectron
+RUN sed -i 's/cythonize(ext_modules)/cythonize(ext_modules, language_level="2")/g' detectron/setup.py
 RUN cd detectron && pip install -r requirements.txt && make
 
 WORKDIR /workspace/ml-server
