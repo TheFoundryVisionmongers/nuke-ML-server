@@ -14,6 +14,7 @@
 ##############################################################################
 
 from __future__ import division, print_function, absolute_import
+from builtins import input # python 2/3 forward-compatible (raw_input)
 
 import sys
 import os
@@ -332,7 +333,7 @@ class TrainModel(object):
                 print("    {}".format(name))
             # Ask user if they prefer to start training from scratch or resume training on a specific ckeckpoint 
             while True:
-                mode=str(raw_input('Start training from scratch (start) or resume training from a previous checkpoint (choose one of the above): '))
+                mode=str(input('Start training from scratch (start) or resume training from a previous checkpoint (choose one of the above): '))
                 if mode == 'start' or mode in ckpt_names:
                     break
                 else:
