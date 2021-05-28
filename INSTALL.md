@@ -98,12 +98,6 @@ Note: This last command will create the following folders under the `<protobuf_i
 - include - that contains C++ headers and protobuf *.proto files;
 - lib - that contains linking libraries and CMake configuration files for protobuf package.
 
-Add the bin/protoc.exe compiler to your path so it is found when compiling the MLClient:
-```
-set PATH=%PATH%;<protobuf_install_dir>/bin
-```
-Close and reopen the “**x64** Native Tools Command Prompt for VS 2017” for the changes to take effect.
-
 ### Compile MLClient Nuke Node
 
 If not already done, clone the `nuke-ML-server` repository:
@@ -115,7 +109,7 @@ mkdir x64-Release & cd x64-Release
 ```
 Compile the MLClient and link your version of Nuke and Protobuf install path:
 ```
-cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DNUKE_INSTALL_PATH=”/path/to//Nuke12.0v3” -DProtobuf_LIBRARIES=”<protobuf_install_dir>/lib” -DProtobuf_INCLUDE_DIR=”<protobuf_install_dir>/include” ../..
+cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DNUKE_INSTALL_PATH=”/path/to//Nuke12.0v3” -DProtobuf_LIBRARIES=”<protobuf_install_dir>/lib” -DProtobuf_INCLUDE_DIR=”<protobuf_install_dir>/include” -DProtobuf_PROTOC_EXECUTABLE="<protobuf_install_dir>/bin/protoc.exe" ../..
 nmake
 ```
 The MLClient.dll plugin should now be in the `build/x64-Release/Plugins/Client` folder. Before it can be used, Nuke needs to know where it lives. You can either copy it to your ~/.nuke folder or update the NUKE_PATH environment:
