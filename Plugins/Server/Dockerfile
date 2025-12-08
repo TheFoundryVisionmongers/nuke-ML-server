@@ -61,6 +61,9 @@ RUN pip install 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=Pyt
 
 # Install detectron for mask RCNN
 #RUN pip install 'git+https://github.com/johnnynunez/detectron2.git'
+RUN git clone https://github.com/facebookresearch/detectron2.git /detectron2
+WORKDIR /detectron2
+RUN pip install -e .
 
 WORKDIR /workspace/ml-server
 # Copy your current folder to the docker image /workspace/ml-server/ folder
