@@ -2,6 +2,7 @@
 .vscode/
 build/
 build-Debug/
+protobuf*
 
 # Ignore Python compiled files
 *.py[co]
