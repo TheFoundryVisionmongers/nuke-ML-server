@@ -46,11 +46,14 @@ If not already cloned, fetch the `nuke-ML-server` repository:
 ```
 git clone https://github.com/TheFoundryVisionmongers/nuke-ML-server
 ```
+
+Install gcc-11
+
 Execute the commands below to compile the client MLClient.so plugin, setting the NUKE_INSTALL_PATH to point to the folder of the desired Nuke version:
 ```
 cd nuke-ML-server/
 mkdir build && cd build
-cmake -DNUKE_INSTALL_PATH=/path/to/Nuke11.3v1/ ..
+cmake -DNUKE_INSTALL_PATH=/opt/foundry/Nuke16.0v7/ ..
 make
 ```
 The MLClient.so plugin will now be in the `build/Plugins/Client` folder. Before it can be used, Nuke needs to know where it lives. One way to do this is to update the NUKE_PATH environment variable to point to the MLClient.so plugin (This can be skipped if it was moved to the root of your ~/.nuke folder, or the path was added in Nuke through Python):
